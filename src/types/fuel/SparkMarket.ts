@@ -55,14 +55,14 @@ export type AssetIdInput = { bits: string };
 export type AssetIdOutput = AssetIdInput;
 export type BalanceInput = { base: BigNumberish, quote: BigNumberish };
 export type BalanceOutput = { base: BN, quote: BN };
-export type CancelOrderEventInput = { order_id: string, user: IdentityInput, liquid_base: BigNumberish, liquid_quote: BigNumberish };
-export type CancelOrderEventOutput = { order_id: string, user: IdentityOutput, liquid_base: BN, liquid_quote: BN };
+export type CancelOrderEventInput = { order_id: string, user: IdentityInput, balance: AccountInput };
+export type CancelOrderEventOutput = { order_id: string, user: IdentityOutput, balance: AccountOutput };
 export type ContractIdInput = { bits: string };
 export type ContractIdOutput = ContractIdInput;
-export type DepositEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, liquid_base: BigNumberish, liquid_quote: BigNumberish };
-export type DepositEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, liquid_base: BN, liquid_quote: BN };
-export type OpenOrderEventInput = { amount: BigNumberish, asset: AssetIdInput, order_type: OrderTypeInput, order_id: string, price: BigNumberish, user: IdentityInput, liquid_base: BigNumberish, liquid_quote: BigNumberish };
-export type OpenOrderEventOutput = { amount: BN, asset: AssetIdOutput, order_type: OrderTypeOutput, order_id: string, price: BN, user: IdentityOutput, liquid_base: BN, liquid_quote: BN };
+export type DepositEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, balance: AccountInput };
+export type DepositEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, balance: AccountOutput };
+export type OpenOrderEventInput = { amount: BigNumberish, asset: AssetIdInput, order_type: OrderTypeInput, order_id: string, price: BigNumberish, user: IdentityInput, balance: AccountInput };
+export type OpenOrderEventOutput = { amount: BN, asset: AssetIdOutput, order_type: OrderTypeOutput, order_id: string, price: BN, user: IdentityOutput, balance: AccountOutput };
 export type OrderInput = { amount: BigNumberish, asset_type: AssetTypeInput, order_type: OrderTypeInput, owner: IdentityInput, price: BigNumberish, block_height: BigNumberish, order_height: BigNumberish, matcher_fee: BigNumberish, protocol_maker_fee: BigNumberish, protocol_taker_fee: BigNumberish };
 export type OrderOutput = { amount: BN, asset_type: AssetTypeOutput, order_type: OrderTypeOutput, owner: IdentityOutput, price: BN, block_height: number, order_height: BN, matcher_fee: BN, protocol_maker_fee: BN, protocol_taker_fee: BN };
 export type OrderChangeInfoInput = { change_type: OrderChangeTypeInput, block_height: BigNumberish, sender: IdentityInput, tx_id: string, amount_before: BigNumberish, amount_after: BigNumberish };
@@ -75,10 +75,10 @@ export type SetMatcherRewardEventInput = { amount: BigNumberish };
 export type SetMatcherRewardEventOutput = { amount: BN };
 export type SetProtocolFeeEventInput = { protocol_fee: Vec<ProtocolFeeInput> };
 export type SetProtocolFeeEventOutput = { protocol_fee: Vec<ProtocolFeeOutput> };
-export type TradeOrderEventInput = { base_sell_order_id: string, base_buy_order_id: string, base_sell_order_limit: LimitTypeInput, base_buy_order_limit: LimitTypeInput, order_matcher: IdentityInput, trade_size: BigNumberish, trade_price: BigNumberish, block_height: BigNumberish, tx_id: string, order_seller: IdentityInput, order_buyer: IdentityInput, s_account_liquid_base: BigNumberish, s_account_liquid_quote: BigNumberish, b_account_liquid_base: BigNumberish, b_account_liquid_quote: BigNumberish };
-export type TradeOrderEventOutput = { base_sell_order_id: string, base_buy_order_id: string, base_sell_order_limit: LimitTypeOutput, base_buy_order_limit: LimitTypeOutput, order_matcher: IdentityOutput, trade_size: BN, trade_price: BN, block_height: number, tx_id: string, order_seller: IdentityOutput, order_buyer: IdentityOutput, s_account_liquid_base: BN, s_account_liquid_quote: BN, b_account_liquid_base: BN, b_account_liquid_quote: BN };
-export type WithdrawEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, liquid_base: BigNumberish, liquid_quote: BigNumberish };
-export type WithdrawEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, liquid_base: BN, liquid_quote: BN };
+export type TradeOrderEventInput = { base_sell_order_id: string, base_buy_order_id: string, base_sell_order_limit: LimitTypeInput, base_buy_order_limit: LimitTypeInput, order_matcher: IdentityInput, trade_size: BigNumberish, trade_price: BigNumberish, block_height: BigNumberish, tx_id: string, order_seller: IdentityInput, order_buyer: IdentityInput, s_balance: AccountInput, b_balance: AccountInput };
+export type TradeOrderEventOutput = { base_sell_order_id: string, base_buy_order_id: string, base_sell_order_limit: LimitTypeOutput, base_buy_order_limit: LimitTypeOutput, order_matcher: IdentityOutput, trade_size: BN, trade_price: BN, block_height: number, tx_id: string, order_seller: IdentityOutput, order_buyer: IdentityOutput, s_balance: AccountOutput, b_balance: AccountOutput };
+export type WithdrawEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, balance: AccountInput };
+export type WithdrawEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, balance: AccountOutput };
 
 export type SparkMarketConfigurables = Partial<{
   BASE_ASSET: AssetIdInput;
@@ -761,12 +761,8 @@ const abi = {
           "typeId": 16
         },
         {
-          "name": "liquid_base",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "liquid_quote",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+          "name": "balance",
+          "typeId": 21
         }
       ]
     },
@@ -787,12 +783,8 @@ const abi = {
           "typeId": 16
         },
         {
-          "name": "liquid_base",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "liquid_quote",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+          "name": "balance",
+          "typeId": 21
         }
       ]
     },
@@ -825,12 +817,8 @@ const abi = {
           "typeId": 16
         },
         {
-          "name": "liquid_base",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "liquid_quote",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+          "name": "balance",
+          "typeId": 21
         }
       ]
     },
@@ -923,20 +911,12 @@ const abi = {
           "typeId": 16
         },
         {
-          "name": "s_account_liquid_base",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+          "name": "s_balance",
+          "typeId": 21
         },
         {
-          "name": "s_account_liquid_quote",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "b_account_liquid_base",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "b_account_liquid_quote",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+          "name": "b_balance",
+          "typeId": 21
         }
       ]
     },
@@ -957,12 +937,8 @@ const abi = {
           "typeId": 16
         },
         {
-          "name": "liquid_base",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "liquid_quote",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+          "name": "balance",
+          "typeId": 21
         }
       ]
     },
@@ -1857,37 +1833,37 @@ const abi = {
     {
       "name": "BASE_ASSET",
       "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
-      "offset": 88640
+      "offset": 110656
     },
     {
       "name": "BASE_ASSET_DECIMALS",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 88672
+      "offset": 110688
     },
     {
       "name": "QUOTE_ASSET",
       "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
-      "offset": 88728
+      "offset": 110744
     },
     {
       "name": "QUOTE_ASSET_DECIMALS",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 88760
+      "offset": 110776
     },
     {
       "name": "OWNER",
       "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335",
-      "offset": 88680
+      "offset": 110696
     },
     {
       "name": "PRICE_DECIMALS",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 88720
+      "offset": 110736
     },
     {
       "name": "VERSION",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 88768
+      "offset": 110784
     }
   ]
 };
