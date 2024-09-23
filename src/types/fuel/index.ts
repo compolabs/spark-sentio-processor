@@ -10,3 +10,5 @@
 
 export { SparkMarket } from './SparkMarket.js';
 export { SparkMarketFactory } from './SparkMarketFactory.js';
+export { SparkRegistry } from './SparkRegistry.js';
+export { SparkRegistryFactory } from './SparkRegistryFactory.js';

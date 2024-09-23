@@ -1,0 +1,1 @@
+export const MARKET_REGISTRY_ADDRESS = "0xbf156fba896ec5938cb494013f3dde9a05b98dbc4d427141101b6cef3fa426bf";
