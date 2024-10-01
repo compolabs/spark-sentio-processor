@@ -1,0 +1,21 @@
+type Balance @entity {
+  id: ID!
+  user: String!
+  market: String!
+  liquidBaseAmount: BigInt!
+  liquidQuoteAmount: BigInt!
+  lockedBaseAmount: BigInt!
+  lockedQuoteAmount: BigInt!
+}
+
+type UserScoreSnapshot @entity {
+  id: ID!
+  block_date: String!
+  timestamp: String!
+  # timestamp_block: String!
+  chain_id: String!
+  block_number: String!
+  user_address: String!
+  pool_address: String!
+  total_value_locked_score: String!
+}
