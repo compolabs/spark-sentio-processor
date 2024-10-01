@@ -1,7 +1,7 @@
 import { SparkMarketProcessorTemplate } from "./types/fuel/SparkMarketProcessor.js";
 import { FuelNetwork } from "@sentio/sdk/fuel";
 import { SparkRegistryProcessor } from './types/fuel/SparkRegistryProcessor.js';
-import { MARKET_REGISTRY_ADDRESS } from './config.js';
+import { REGISTRY_ADDRESS } from './registry.js';
 import { BigDecimal, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import marketsConfig from './marketsConfig.json';
@@ -183,7 +183,7 @@ marketTemplate.onTimeInterval(async (block, ctx) => {
     const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
 
     for (const balance of filteredBalances) {
-        const marketConfig = Object.values(marketsConfig).find(market => market.market.toLowerCase() === balance.market.toLowerCase());
+        const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
 
         if (!marketConfig) {
             ctx.eventLogger.emit('MarketConfigNotFound', {
@@ -241,18 +241,23 @@ marketTemplate.onTimeInterval(async (block, ctx) => {
 
         await ctx.store.upsert(snapshot);
 
-        ctx.eventLogger.emit('SnapshotCreation', {
+        ctx.eventLogger.emit('Snapshot', {
             severity: LogLevel.INFO,
-            message: `Creating snapshot at ${new Date().toISOString()}`,
-            block_number: ctx.block?.id,
+            message: `Snapshot for user ${balance.user}: ${new Date().toISOString()}`,
+            timestamp: new Date().toISOString(),
+            block_date: ctx.timestamp.toString(),
+            chain_id: ctx.chainId,
+            block_number: block.height.toString(),
             user_address: balance.user,
+            pool_address: ctx.contractAddress,
+            total_value_locked_score: tvl
         });
 
     }
 }, 60 * 60);
 
 SparkRegistryProcessor.bind({
-    address: MARKET_REGISTRY_ADDRESS,
+    address: REGISTRY_ADDRESS,
     chainId: FuelNetwork.TEST_NET
 })
     .onLogMarketRegisterEvent(async (log, ctx) => {

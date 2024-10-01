@@ -54,11 +54,11 @@ export class UserScoreSnapshot extends AbstractEntity  {
 
 	@Required
 	@Column("String")
-	block_date: String
+	timestamp: String
 
 	@Required
 	@Column("String")
-	timestamp: String
+	block_date: String
 
 	@Required
 	@Column("String")
@@ -95,9 +95,8 @@ const source = `type Balance @entity {
 
 type UserScoreSnapshot @entity {
   id: ID!
-  block_date: String!
   timestamp: String!
-  # timestamp_block: String!
+  block_date: String!
   chain_id: String!
   block_number: String!
   user_address: String!

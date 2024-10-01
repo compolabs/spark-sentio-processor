@@ -1,1 +1,0 @@
-export const MARKET_REGISTRY_ADDRESS = "0x0f5232e0d927f7a477baa7e6f0380c50f8b3de5c0d6ae42bb29ba8a767e5ff1a";
