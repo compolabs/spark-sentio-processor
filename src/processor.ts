@@ -1,9 +1,8 @@
 import { SparkMarketProcessorTemplate } from "./types/fuel/SparkMarketProcessor.js";
-import { FuelBlock, FuelNetwork } from "@sentio/sdk/fuel";
+import { FuelNetwork } from "@sentio/sdk/fuel";
 import { SparkRegistryProcessor } from './types/fuel/SparkRegistryProcessor.js';
 import { MARKET_REGISTRY_ADDRESS } from './config.js';
-import { FuelChainId } from "@sentio/chain";
-import { BigDecimal, Gauge, LogLevel } from "@sentio/sdk";
+import { BigDecimal, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import marketsConfig from './marketsConfig.json';
 
@@ -12,27 +11,16 @@ export const getHash = (data: string) => {
 };
 
 import { Balance, UserScoreSnapshot } from './schema/store.js';
-import { getPriceBySymbol, getPriceByType } from "@sentio/sdk/utils";
+import { getPriceBySymbol } from "@sentio/sdk/utils";
 
 const marketTemplate = new SparkMarketProcessorTemplate()
 
     .onLogDepositEvent(async (deposit, ctx) => {
+
         const liquidBaseAmount = BigInt(deposit.data.balance.liquid.base.toString());
         const liquidQuoteAmount = BigInt(deposit.data.balance.liquid.quote.toString());
         const lockedBaseAmount = BigInt(deposit.data.balance.locked.base.toString());
         const lockedQuoteAmount = BigInt(deposit.data.balance.locked.quote.toString());
-
-        // ctx.eventLogger.emit('Deposit', {
-        //     market: ctx.contractAddress,
-        //     block: ctx.block,
-        //     user: deposit.data.user.Address?.bits,
-        //     amount: deposit.data.amount,
-        //     asset: deposit.data.asset.bits,
-        //     liquidBaseAmount: liquidBaseAmount,
-        //     liquidQuoteAmount: liquidQuoteAmount,
-        //     lockedBaseAmount: lockedBaseAmount,
-        //     lockedQuoteAmount: lockedQuoteAmount,
-        // });
 
         const balanceId = getHash(`${deposit.data.user.Address?.bits}-${ctx.contractAddress}`);
 
@@ -58,15 +46,6 @@ const marketTemplate = new SparkMarketProcessorTemplate()
         await ctx.store.upsert(balance);
     })
     .onLogWithdrawEvent(async (withdraw, ctx) => {
-        // ctx.eventLogger.emit('Withdraw', {
-        //     user: withdraw.data.user.Address?.bits,
-        //     amount: withdraw.data.amount,
-        //     asset: withdraw.data.asset.bits,
-        //     liquid_base_amount: withdraw.data.balance.liquid.base,
-        //     liquid_quote_amount: withdraw.data.balance.liquid.quote,
-        //     locked_base_amount: withdraw.data.balance.locked.base,
-        //     locked_quote_amount: withdraw.data.balance.locked.quote,
-        // });
 
         const liquidBaseAmount = BigInt(withdraw.data.balance.liquid.base.toString());
         const liquidQuoteAmount = BigInt(withdraw.data.balance.liquid.quote.toString());
@@ -94,18 +73,7 @@ const marketTemplate = new SparkMarketProcessorTemplate()
         await ctx.store.upsert(balance);
     })
     .onLogOpenOrderEvent(async (open, ctx: any) => {
-        // ctx.eventLogger.emit('OpenOrder', {
-        //     order_id: open.data.order_id,
-        //     asset: open.data.asset.bits,
-        //     amount: BigInt(open.data.amount.toString()),
-        //     order_type: open.data.order_type,
-        //     // price: BigInt(open.data.price.toString()),
-        //     // user: open.data.user.Address?.bits,
-        //     liquid_base_amount: open.data.balance.liquid.base,
-        //     liquid_quote_amount: open.data.balance.liquid.quote,
-        //     locked_base_amount: open.data.balance.locked.base,
-        //     locked_quote_amount: open.data.balance.locked.quote,
-        // });
+
         const liquidBaseAmount = BigInt(open.data.balance.liquid.base.toString());
         const liquidQuoteAmount = BigInt(open.data.balance.liquid.quote.toString());
         const lockedBaseAmount = BigInt(open.data.balance.locked.base.toString());
@@ -132,6 +100,7 @@ const marketTemplate = new SparkMarketProcessorTemplate()
         await ctx.store.upsert(balance);
     })
     .onLogCancelOrderEvent(async (cancel, ctx: any) => {
+
         const liquidBaseAmount = BigInt(cancel.data.balance.liquid.base.toString());
         const liquidQuoteAmount = BigInt(cancel.data.balance.liquid.quote.toString());
         const lockedBaseAmount = BigInt(cancel.data.balance.locked.base.toString());
@@ -158,6 +127,7 @@ const marketTemplate = new SparkMarketProcessorTemplate()
         await ctx.store.upsert(balance);
     })
     .onLogTradeOrderEvent(async (trade, ctx: any) => {
+
         const seller_liquidBaseAmount = BigInt(trade.data.s_balance.liquid.base.toString());
         const seller_liquidQuoteAmount = BigInt(trade.data.s_balance.liquid.quote.toString());
         const seller_lockedBaseAmount = BigInt(trade.data.s_balance.locked.base.toString());
@@ -210,45 +180,21 @@ const marketTemplate = new SparkMarketProcessorTemplate()
 
 marketTemplate.onTimeInterval(async (block, ctx) => {
     const balances = await ctx.store.list(Balance, []);
+    const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
 
-    for (const balance of balances) {
-
-        const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
+    for (const balance of filteredBalances) {
+        const marketConfig = Object.values(marketsConfig).find(market => market.market.toLowerCase() === balance.market.toLowerCase());
 
         if (!marketConfig) {
             ctx.eventLogger.emit('MarketConfigNotFound', {
                 severity: LogLevel.ERROR,
                 message: `Market config not found for market address ${balance.market}`,
-                balanceId: balance.id,
-                user: balance.user,
             });
-            continue
-        } else {
-            ctx.eventLogger.emit('MarketConfigSelection', {
-                severity: LogLevel.INFO,
-                message: `Selected market config for balance with market address ${balance.market}`,
-                market: marketConfig.market,
-                baseToken: marketConfig.baseToken,
-                quoteToken: marketConfig.quoteToken,
-                baseDecimal: marketConfig.baseDecimal,
-                quoteDecimal: marketConfig.quoteDecimal,
-                user: balance.user,
-                balanceId: balance.id
-            });
+            continue;
         }
-        // ctx.eventLogger.emit('MarketConfigSelection', {
-        //     severity: LogLevel.INFO,
-        //     message: `Selected market config for balance with market address ${balance.market}`,
-        //     market: marketConfig.market,
-        //     baseToken: marketConfig.baseToken,
-        //     quoteToken: marketConfig.quoteToken,
-        //     baseDecimal: marketConfig.baseDecimal,
-        //     quoteDecimal: marketConfig.quoteDecimal,
-        //     user: balance.user,
-        //     balanceId: balance.id
-        // });
-        let baseTokenPrice = (await getPriceBySymbol(marketConfig.baseTokenSymbol, new Date(ctx.timestamp)));
-        let quoteTokenPrice = (await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp)));
+
+        let baseTokenPrice = await getPriceBySymbol(marketConfig.baseTokenSymbol, new Date(ctx.timestamp));
+        let quoteTokenPrice = await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp));
 
         if (!baseTokenPrice) {
             baseTokenPrice = marketConfig.defaultBasePrice;
@@ -284,9 +230,8 @@ marketTemplate.onTimeInterval(async (block, ctx) => {
         const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${ctx.transaction}`);
         const snapshot = new UserScoreSnapshot({
             id: snapshotId,
-            block_date: ctx.timestamp.toString(),
             timestamp: new Date().toISOString(),
-            // timestamp_block: ctx.block?.time,
+            block_date: ctx.timestamp.toString(),
             chain_id: ctx.chainId,
             block_number: block.height.toString(),
             user_address: balance.user,
@@ -305,8 +250,6 @@ marketTemplate.onTimeInterval(async (block, ctx) => {
 
     }
 }, 60 * 60);
-
-
 
 SparkRegistryProcessor.bind({
     address: MARKET_REGISTRY_ADDRESS,

@@ -91,7 +91,6 @@ const source = `type Balance @entity {
   liquidQuoteAmount: BigInt!
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
-  # timestamp: String!
 }
 
 type UserScoreSnapshot @entity {
