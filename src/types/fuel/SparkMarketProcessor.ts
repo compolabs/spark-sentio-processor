@@ -5,7 +5,7 @@
     
 import { FuelAbstractProcessor, FuelContractContext, FuelProcessorConfig, TypedCall, FuelFetchConfig, FuelCall, FuelLog, addFuelProcessor, getFuelProcessor, FuelBaseProcessorTemplate } from '@sentio/sdk/fuel'
 import {Option,Enum,Vec} from './common.js'
-import {AssetTypeInput,AssetTypeOutput,LimitTypeInput,LimitTypeOutput,OrderChangeTypeInput,OrderChangeTypeOutput,OrderTypeInput,OrderTypeOutput,AccountErrorInput,AccountErrorOutput,AssetErrorInput,AssetErrorOutput,AuthErrorInput,AuthErrorOutput,MatchErrorInput,MatchErrorOutput,OrderErrorInput,OrderErrorOutput,ValueErrorInput,ValueErrorOutput,IdentityInput,IdentityOutput,ReentrancyErrorInput,ReentrancyErrorOutput,AccountInput,AccountOutput,BalanceInput,BalanceOutput,OrderInput,OrderOutput,OrderChangeInfoInput,OrderChangeInfoOutput,ProtocolFeeInput,ProtocolFeeOutput,CancelOrderEventInput,CancelOrderEventOutput,DepositEventInput,DepositEventOutput,OpenOrderEventInput,OpenOrderEventOutput,SetEpochEventInput,SetEpochEventOutput,SetMatcherRewardEventInput,SetMatcherRewardEventOutput,SetProtocolFeeEventInput,SetProtocolFeeEventOutput,SetStoreOrderChangeInfoEventInput,SetStoreOrderChangeInfoEventOutput,TradeOrderEventInput,TradeOrderEventOutput,WithdrawEventInput,WithdrawEventOutput,AddressInput,AddressOutput,AssetIdInput,AssetIdOutput,ContractIdInput,ContractIdOutput, SparkMarket} from './SparkMarket.js'
+import {AssetTypeInput,AssetTypeOutput,LimitTypeInput,LimitTypeOutput,OrderChangeTypeInput,OrderChangeTypeOutput,OrderTypeInput,OrderTypeOutput,AccountErrorInput,AccountErrorOutput,AssetErrorInput,AssetErrorOutput,AuthErrorInput,AuthErrorOutput,MatchErrorInput,MatchErrorOutput,OrderErrorInput,OrderErrorOutput,ValueErrorInput,ValueErrorOutput,IdentityInput,IdentityOutput,ReentrancyErrorInput,ReentrancyErrorOutput,AccountInput,AccountOutput,BalanceInput,BalanceOutput,OrderInput,OrderOutput,OrderChangeInfoInput,OrderChangeInfoOutput,ProtocolFeeInput,ProtocolFeeOutput,CancelOrderEventInput,CancelOrderEventOutput,DepositEventInput,DepositEventOutput,DepositForEventInput,DepositForEventOutput,OpenOrderEventInput,OpenOrderEventOutput,SetEpochEventInput,SetEpochEventOutput,SetMatcherRewardEventInput,SetMatcherRewardEventOutput,SetProtocolFeeEventInput,SetProtocolFeeEventOutput,SetStoreOrderChangeInfoEventInput,SetStoreOrderChangeInfoEventOutput,TradeOrderEventInput,TradeOrderEventOutput,WithdrawEventInput,WithdrawEventOutput,WithdrawToMarketEventInput,WithdrawToMarketEventOutput,AddressInput,AddressOutput,AssetIdInput,AssetIdOutput,ContractIdInput,ContractIdOutput, SparkMarket} from './SparkMarket.js'
 
 import type { BigNumberish, BN } from 'fuels';
 import type { BytesLike, Bytes } from 'fuels';
@@ -46,6 +46,10 @@ namespace SparkMarketNS {
       return this.logs?.filter(l =>["12590297951544646752"].includes(l.logId) ).map(l => l.data) as Array<DepositEventOutput>
     }
 
+    getLogsOfTypeDepositForEvent(): Array<DepositForEventOutput> {
+      return this.logs?.filter(l =>["12112124172827649831"].includes(l.logId) ).map(l => l.data) as Array<DepositForEventOutput>
+    }
+
     getLogsOfTypeOpenOrderEvent(): Array<OpenOrderEventOutput> {
       return this.logs?.filter(l =>["7812135309850120461"].includes(l.logId) ).map(l => l.data) as Array<OpenOrderEventOutput>
     }
@@ -77,6 +81,10 @@ namespace SparkMarketNS {
     getLogsOfTypeWithdrawEvent(): Array<WithdrawEventOutput> {
       return this.logs?.filter(l =>["10918704871079408520"].includes(l.logId) ).map(l => l.data) as Array<WithdrawEventOutput>
     }
+
+    getLogsOfTypeWithdrawToMarketEvent(): Array<WithdrawToMarketEventOutput> {
+      return this.logs?.filter(l =>["12551359631505241447"].includes(l.logId) ).map(l => l.data) as Array<WithdrawToMarketEventOutput>
+    }
   }
 
 
@@ -91,6 +99,7 @@ const LogCancelOrderEventId = "14676650066558707344"
 const LogValueErrorId = "4038555509566971562"
 const LogAssetErrorId = "16169998749359270814"
 const LogDepositEventId = "12590297951544646752"
+const LogDepositForEventId = "12112124172827649831"
 const LogOpenOrderEventId = "7812135309850120461"
 const LogSetEpochEventId = "5744192922338635869"
 const LogTradeOrderEventId = "18305104039093136274"
@@ -99,6 +108,7 @@ const LogSetMatcherRewardEventId = "649664855397936830"
 const LogSetProtocolFeeEventId = "10772010129570911307"
 const LogSetStoreOrderChangeInfoEventId = "3792793406740277287"
 const LogWithdrawEventId = "10918704871079408520"
+const LogWithdrawToMarketEventId = "12551359631505241447"
 
 export class SparkMarketProcessor extends FuelAbstractProcessor<SparkMarket> {
   static bind(options: Omit<FuelProcessorConfig, 'abi'>) {
@@ -151,6 +161,10 @@ export class SparkMarketProcessor extends FuelAbstractProcessor<SparkMarket> {
     return super.onLog<DepositEventOutput>([LogDepositEventId], (log, ctx) => handler(log, ctx))
   }
 
+  onLogDepositForEvent(handler: (log: FuelLog<DepositForEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<DepositForEventOutput>([LogDepositForEventId], (log, ctx) => handler(log, ctx))
+  }
+
   onLogOpenOrderEvent(handler: (log: FuelLog<OpenOrderEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<OpenOrderEventOutput>([LogOpenOrderEventId], (log, ctx) => handler(log, ctx))
   }
@@ -181,6 +195,10 @@ export class SparkMarketProcessor extends FuelAbstractProcessor<SparkMarket> {
 
   onLogWithdrawEvent(handler: (log: FuelLog<WithdrawEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<WithdrawEventOutput>([LogWithdrawEventId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogWithdrawToMarketEvent(handler: (log: FuelLog<WithdrawToMarketEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<WithdrawToMarketEventOutput>([LogWithdrawToMarketEventId], (log, ctx) => handler(log, ctx))
   }
 
 }
@@ -223,6 +241,10 @@ export class SparkMarketProcessorTemplate extends FuelBaseProcessorTemplate<Spar
     return super.onLog<DepositEventOutput>([LogDepositEventId], (log, ctx) => handler(log, ctx))
   }
 
+  onLogDepositForEvent(handler: (log: FuelLog<DepositForEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<DepositForEventOutput>([LogDepositForEventId], (log, ctx) => handler(log, ctx))
+  }
+
   onLogOpenOrderEvent(handler: (log: FuelLog<OpenOrderEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<OpenOrderEventOutput>([LogOpenOrderEventId], (log, ctx) => handler(log, ctx))
   }
@@ -253,6 +275,10 @@ export class SparkMarketProcessorTemplate extends FuelBaseProcessorTemplate<Spar
 
   onLogWithdrawEvent(handler: (log: FuelLog<WithdrawEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<WithdrawEventOutput>([LogWithdrawEventId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogWithdrawToMarketEvent(handler: (log: FuelLog<WithdrawToMarketEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<WithdrawToMarketEventOutput>([LogWithdrawToMarketEventId], (log, ctx) => handler(log, ctx))
   }
 }
 

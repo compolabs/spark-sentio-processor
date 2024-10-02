@@ -1,7 +1,7 @@
 {
  "BTC-USDC": {
   "name": "BTC-USDC",
-  "market": "0xb1ed073b4dccbff48e2ac1b52a49454e6a2921aa54effee89eb958dc5ddbffbe",
+  "market": "0xbc69e42348c9a992100970e8469247b58a517c2f7dd373741c6707cda35ccfc6",
   "baseToken": "0x38e4ca985b22625fff93205e997bfc5cc8453a953da638ad297ca60a9f2600bc",
   "baseTokenSymbol": "BTC",
   "quoteToken": "0x336b7c06352a4b736ff6f688ba6885788b3df16e136e95310ade51aa32dc6f05",
@@ -13,7 +13,7 @@
  },
  "ETH-USDC": {
   "name": "ETH-USDC",
-  "market": "0x2dd759eb0671e293b5e386f9b4f1cc8a1cb2c4ed1cf839e5de4f06f822d3790f",
+  "market": "0x10860c51de3a37c47ebff2e08a810d9e2963ef161ee3a88274520938c85914e8",
   "baseToken": "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
   "baseTokenSymbol": "ETH",
   "quoteToken": "0x336b7c06352a4b736ff6f688ba6885788b3df16e136e95310ade51aa32dc6f05",

@@ -24,8 +24,8 @@ import type { Option, Enum, Vec } from './common.js';
 
 export type AccountErrorInput = Enum<{ InsufficientBalance: [BigNumberish, BigNumberish, boolean] }>;
 export type AccountErrorOutput = Enum<{ InsufficientBalance: [BN, BN, boolean] }>;
-export enum AssetErrorInput { InvalidAsset = 'InvalidAsset', InvalidFeeAsset = 'InvalidFeeAsset' };
-export enum AssetErrorOutput { InvalidAsset = 'InvalidAsset', InvalidFeeAsset = 'InvalidFeeAsset' };
+export enum AssetErrorInput { InvalidAsset = 'InvalidAsset', InvalidFeeAsset = 'InvalidFeeAsset', InvalidMarketAsset = 'InvalidMarketAsset' };
+export enum AssetErrorOutput { InvalidAsset = 'InvalidAsset', InvalidFeeAsset = 'InvalidFeeAsset', InvalidMarketAsset = 'InvalidMarketAsset' };
 export enum AssetTypeInput { Base = 'Base', Quote = 'Quote' };
 export enum AssetTypeOutput { Base = 'Base', Quote = 'Quote' };
 export enum AuthErrorInput { Unauthorized = 'Unauthorized' };
@@ -44,8 +44,8 @@ export enum OrderTypeInput { Buy = 'Buy', Sell = 'Sell' };
 export enum OrderTypeOutput { Buy = 'Buy', Sell = 'Sell' };
 export enum ReentrancyErrorInput { NonReentrant = 'NonReentrant' };
 export enum ReentrancyErrorOutput { NonReentrant = 'NonReentrant' };
-export type ValueErrorInput = Enum<{ InvalidAmount: undefined, InvalidSlippage: undefined, InvalidArrayLength: undefined, InvalidFeeAmount: [], InvalidEpoch: [BigNumberish, BigNumberish, BigNumberish, BigNumberish], InvalidFeeSorting: undefined, InvalidFeeZeroBased: undefined, InvalidValueSame: undefined }>;
-export type ValueErrorOutput = Enum<{ InvalidAmount: void, InvalidSlippage: void, InvalidArrayLength: void, InvalidFeeAmount: [], InvalidEpoch: [BN, BN, BN, BN], InvalidFeeSorting: void, InvalidFeeZeroBased: void, InvalidValueSame: void }>;
+export type ValueErrorInput = Enum<{ InvalidAmount: undefined, InvalidSlippage: undefined, InvalidArrayLength: undefined, InvalidFeeAmount: [], InvalidEpoch: [BigNumberish, BigNumberish, BigNumberish, BigNumberish], InvalidFeeSorting: undefined, InvalidFeeZeroBased: undefined, InvalidValueSame: undefined, InvalidMarketSame: undefined }>;
+export type ValueErrorOutput = Enum<{ InvalidAmount: void, InvalidSlippage: void, InvalidArrayLength: void, InvalidFeeAmount: [], InvalidEpoch: [BN, BN, BN, BN], InvalidFeeSorting: void, InvalidFeeZeroBased: void, InvalidValueSame: void, InvalidMarketSame: void }>;
 
 export type AccountInput = { liquid: BalanceInput, locked: BalanceInput };
 export type AccountOutput = { liquid: BalanceOutput, locked: BalanceOutput };
@@ -59,8 +59,10 @@ export type CancelOrderEventInput = { order_id: string, user: IdentityInput, bal
 export type CancelOrderEventOutput = { order_id: string, user: IdentityOutput, balance: AccountOutput };
 export type ContractIdInput = { bits: string };
 export type ContractIdOutput = ContractIdInput;
-export type DepositEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, balance: AccountInput };
-export type DepositEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, balance: AccountOutput };
+export type DepositEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, account: AccountInput };
+export type DepositEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, account: AccountOutput };
+export type DepositForEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, account: AccountInput, caller: IdentityInput };
+export type DepositForEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, account: AccountOutput, caller: IdentityOutput };
 export type OpenOrderEventInput = { amount: BigNumberish, asset: AssetIdInput, order_type: OrderTypeInput, order_id: string, price: BigNumberish, user: IdentityInput, balance: AccountInput };
 export type OpenOrderEventOutput = { amount: BN, asset: AssetIdOutput, order_type: OrderTypeOutput, order_id: string, price: BN, user: IdentityOutput, balance: AccountOutput };
 export type OrderInput = { amount: BigNumberish, asset_type: AssetTypeInput, order_type: OrderTypeInput, owner: IdentityInput, price: BigNumberish, block_height: BigNumberish, order_height: BigNumberish, matcher_fee: BigNumberish, protocol_maker_fee: BigNumberish, protocol_taker_fee: BigNumberish };
@@ -79,8 +81,10 @@ export type SetStoreOrderChangeInfoEventInput = { store: boolean };
 export type SetStoreOrderChangeInfoEventOutput = SetStoreOrderChangeInfoEventInput;
 export type TradeOrderEventInput = { base_sell_order_id: string, base_buy_order_id: string, base_sell_order_limit: LimitTypeInput, base_buy_order_limit: LimitTypeInput, order_matcher: IdentityInput, trade_size: BigNumberish, trade_price: BigNumberish, block_height: BigNumberish, tx_id: string, order_seller: IdentityInput, order_buyer: IdentityInput, s_balance: AccountInput, b_balance: AccountInput };
 export type TradeOrderEventOutput = { base_sell_order_id: string, base_buy_order_id: string, base_sell_order_limit: LimitTypeOutput, base_buy_order_limit: LimitTypeOutput, order_matcher: IdentityOutput, trade_size: BN, trade_price: BN, block_height: number, tx_id: string, order_seller: IdentityOutput, order_buyer: IdentityOutput, s_balance: AccountOutput, b_balance: AccountOutput };
-export type WithdrawEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, balance: AccountInput };
-export type WithdrawEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, balance: AccountOutput };
+export type WithdrawEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, account: AccountInput };
+export type WithdrawEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, account: AccountOutput };
+export type WithdrawToMarketEventInput = { amount: BigNumberish, asset: AssetIdInput, user: IdentityInput, account: AccountInput, market: ContractIdInput };
+export type WithdrawToMarketEventOutput = { amount: BN, asset: AssetIdOutput, user: IdentityOutput, account: AccountOutput, market: ContractIdOutput };
 
 export type SparkMarketConfigurables = Partial<{
   BASE_ASSET: AssetIdInput;
@@ -213,49 +217,64 @@ const abi = {
       "metadataTypeId": 26
     },
     {
+      "type": "struct events::DepositForEvent",
+      "concreteTypeId": "a816e8c32cd06727c61df456d4cf8d2fcb9bef4cd1381a945ff36176f8132a6a",
+      "metadataTypeId": 27
+    },
+    {
       "type": "struct events::OpenOrderEvent",
       "concreteTypeId": "6c6a47ac80e7110dd8666e169f0fffe2d1378df88cf8960bb9dfe14a84ac3495",
-      "metadataTypeId": 27
+      "metadataTypeId": 28
     },
     {
       "type": "struct events::SetEpochEvent",
       "concreteTypeId": "4fb77907614eb05d769b487a16469bfaac5278323bc54bddccd790cc4e00428e",
-      "metadataTypeId": 28
+      "metadataTypeId": 29
     },
     {
       "type": "struct events::SetMatcherRewardEvent",
       "concreteTypeId": "090412be710caebee4e019479841ea0100912819a3e1c52ba39b1faa7b778c83",
-      "metadataTypeId": 29
+      "metadataTypeId": 30
     },
     {
       "type": "struct events::SetProtocolFeeEvent",
       "concreteTypeId": "957dde23e9fbd44b1bada18eae8b84f6d868be2fe55b721ce24b54cdcdafda79",
-      "metadataTypeId": 30
+      "metadataTypeId": 31
     },
     {
       "type": "struct events::SetStoreOrderChangeInfoEvent",
       "concreteTypeId": "34a2b5822332a827c494d0a8cfc543cb5e50d6e02ac23d9886c94f9a7572d18c",
-      "metadataTypeId": 31
+      "metadataTypeId": 32
     },
     {
       "type": "struct events::TradeOrderEvent",
       "concreteTypeId": "fe08cb2392b6eb92ee6b7868e2877ca0630f87f543acc63897f7d806229379d5",
-      "metadataTypeId": 32
+      "metadataTypeId": 33
     },
     {
       "type": "struct events::WithdrawEvent",
       "concreteTypeId": "9787083b0003f388ec6bf30609ff6a10c76fada67314a162841a445b07a17168",
-      "metadataTypeId": 33
+      "metadataTypeId": 34
+    },
+    {
+      "type": "struct events::WithdrawToMarketEvent",
+      "concreteTypeId": "ae2f6315bc0c35670e520b82df972bee3ba559d15fb2ef3864cfe265f3802fb6",
+      "metadataTypeId": 35
     },
     {
       "type": "struct std::asset_id::AssetId",
       "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
-      "metadataTypeId": 35
+      "metadataTypeId": 37
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
+      "metadataTypeId": 38
     },
     {
       "type": "struct std::vec::Vec<b256>",
       "concreteTypeId": "32559685d0c9845f059bf9d472a0a38cf77d36c23dfcffe5489e86a65cdd9198",
-      "metadataTypeId": 38,
+      "metadataTypeId": 40,
       "typeArguments": [
         "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
       ]
@@ -263,7 +282,7 @@ const abi = {
     {
       "type": "struct std::vec::Vec<struct data_structures::order_change::OrderChangeInfo>",
       "concreteTypeId": "742fbfc9dbc675c4bb942c1c3d87581f5da5c5a8b0fc21e0d1f8d873328d5e5a",
-      "metadataTypeId": 38,
+      "metadataTypeId": 40,
       "typeArguments": [
         "29bc325768e93baaa35ac6e466461baa03f97fb67a0a328521afacca7d3bf987"
       ]
@@ -271,7 +290,7 @@ const abi = {
     {
       "type": "struct std::vec::Vec<struct data_structures::protocol_fee::ProtocolFee>",
       "concreteTypeId": "4b03eb3d5d8751745804ec649d33055ca43456407d3991177f51a1397cd4da50",
-      "metadataTypeId": 38,
+      "metadataTypeId": 40,
       "typeArguments": [
         "009d87c3f03cbc1373d98411934ee7648a3922e9adcbafd190ce4d1618b6e5a2"
       ]
@@ -360,7 +379,7 @@ const abi = {
       "components": [
         {
           "name": "__tuple_element",
-          "typeId": 35
+          "typeId": 37
         },
         {
           "name": "__tuple_element",
@@ -368,7 +387,7 @@ const abi = {
         },
         {
           "name": "__tuple_element",
-          "typeId": 35
+          "typeId": 37
         },
         {
           "name": "__tuple_element",
@@ -472,6 +491,10 @@ const abi = {
         },
         {
           "name": "InvalidFeeAsset",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        },
+        {
+          "name": "InvalidMarketAsset",
           "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
         }
       ]
@@ -581,6 +604,10 @@ const abi = {
         {
           "name": "InvalidValueSame",
           "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        },
+        {
+          "name": "InvalidMarketSame",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
         }
       ]
     },
@@ -590,11 +617,11 @@ const abi = {
       "components": [
         {
           "name": "Address",
-          "typeId": 34
+          "typeId": 36
         },
         {
           "name": "ContractId",
-          "typeId": 36
+          "typeId": 38
         }
       ]
     },
@@ -783,20 +810,20 @@ const abi = {
         },
         {
           "name": "asset",
-          "typeId": 35
+          "typeId": 37
         },
         {
           "name": "user",
           "typeId": 15
         },
         {
-          "name": "balance",
+          "name": "account",
           "typeId": 20
         }
       ]
     },
     {
-      "type": "struct events::OpenOrderEvent",
+      "type": "struct events::DepositForEvent",
       "metadataTypeId": 27,
       "components": [
         {
@@ -805,7 +832,33 @@ const abi = {
         },
         {
           "name": "asset",
-          "typeId": 35
+          "typeId": 37
+        },
+        {
+          "name": "user",
+          "typeId": 15
+        },
+        {
+          "name": "account",
+          "typeId": 20
+        },
+        {
+          "name": "caller",
+          "typeId": 15
+        }
+      ]
+    },
+    {
+      "type": "struct events::OpenOrderEvent",
+      "metadataTypeId": 28,
+      "components": [
+        {
+          "name": "amount",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "asset",
+          "typeId": 37
         },
         {
           "name": "order_type",
@@ -831,7 +884,7 @@ const abi = {
     },
     {
       "type": "struct events::SetEpochEvent",
-      "metadataTypeId": 28,
+      "metadataTypeId": 29,
       "components": [
         {
           "name": "epoch",
@@ -845,7 +898,7 @@ const abi = {
     },
     {
       "type": "struct events::SetMatcherRewardEvent",
-      "metadataTypeId": 29,
+      "metadataTypeId": 30,
       "components": [
         {
           "name": "amount",
@@ -855,11 +908,11 @@ const abi = {
     },
     {
       "type": "struct events::SetProtocolFeeEvent",
-      "metadataTypeId": 30,
+      "metadataTypeId": 31,
       "components": [
         {
           "name": "protocol_fee",
-          "typeId": 38,
+          "typeId": 40,
           "typeArguments": [
             {
               "name": "",
@@ -871,7 +924,7 @@ const abi = {
     },
     {
       "type": "struct events::SetStoreOrderChangeInfoEvent",
-      "metadataTypeId": 31,
+      "metadataTypeId": 32,
       "components": [
         {
           "name": "store",
@@ -881,7 +934,7 @@ const abi = {
     },
     {
       "type": "struct events::TradeOrderEvent",
-      "metadataTypeId": 32,
+      "metadataTypeId": 33,
       "components": [
         {
           "name": "base_sell_order_id",
@@ -939,7 +992,7 @@ const abi = {
     },
     {
       "type": "struct events::WithdrawEvent",
-      "metadataTypeId": 33,
+      "metadataTypeId": 34,
       "components": [
         {
           "name": "amount",
@@ -947,40 +1000,46 @@ const abi = {
         },
         {
           "name": "asset",
-          "typeId": 35
+          "typeId": 37
         },
         {
           "name": "user",
           "typeId": 15
         },
         {
-          "name": "balance",
+          "name": "account",
           "typeId": 20
         }
       ]
     },
     {
-      "type": "struct std::address::Address",
-      "metadataTypeId": 34,
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ]
-    },
-    {
-      "type": "struct std::asset_id::AssetId",
+      "type": "struct events::WithdrawToMarketEvent",
       "metadataTypeId": 35,
       "components": [
         {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+          "name": "amount",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "asset",
+          "typeId": 37
+        },
+        {
+          "name": "user",
+          "typeId": 15
+        },
+        {
+          "name": "account",
+          "typeId": 20
+        },
+        {
+          "name": "market",
+          "typeId": 38
         }
       ]
     },
     {
-      "type": "struct std::contract_id::ContractId",
+      "type": "struct std::address::Address",
       "metadataTypeId": 36,
       "components": [
         {
@@ -990,8 +1049,28 @@ const abi = {
       ]
     },
     {
-      "type": "struct std::vec::RawVec",
+      "type": "struct std::asset_id::AssetId",
       "metadataTypeId": 37,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "metadataTypeId": 38,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
+      "type": "struct std::vec::RawVec",
+      "metadataTypeId": 39,
       "components": [
         {
           "name": "ptr",
@@ -1008,11 +1087,11 @@ const abi = {
     },
     {
       "type": "struct std::vec::Vec",
-      "metadataTypeId": 38,
+      "metadataTypeId": 40,
       "components": [
         {
           "name": "buf",
-          "typeId": 37,
+          "typeId": 39,
           "typeArguments": [
             {
               "name": "",
@@ -1089,6 +1168,53 @@ const abi = {
           "name": "doc-comment",
           "arguments": [
             " @param None - The function doesn't take any input parameters; it uses context information."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @return None - The function does not return a value."
+          ]
+        },
+        {
+          "name": "payable",
+          "arguments": []
+        },
+        {
+          "name": "storage",
+          "arguments": [
+            "read",
+            "write"
+          ]
+        }
+      ]
+    },
+    {
+      "inputs": [
+        {
+          "name": "user",
+          "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335"
+        }
+      ],
+      "name": "deposit_for",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @notice Deposits a specified amount of an asset into the user specified account."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @notice The function requires that the sender sends a non-zero amount of the specified asset."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @param user - The deposit's account."
           ]
         },
         {
@@ -1632,6 +1758,69 @@ const abi = {
     {
       "inputs": [
         {
+          "name": "amount",
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "asset_type",
+          "concreteTypeId": "4c4bcee5a492c5113714e96c87704a3af9b8bd766ce5da2ca716a6564da06ba3"
+        },
+        {
+          "name": "market",
+          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
+        }
+      ],
+      "name": "withdraw_to_market",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @notice Withdraws a specified amount of a given asset from the caller's account."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Then deposits amount to the another market for caller's account."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @param amount The amount of the asset to be withdrawn. Must be greater than zero."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @param asset_type The type of the asset to be withdrawn."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @param market The market ContractId."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " @return None - The function does not return a value."
+          ]
+        },
+        {
+          "name": "storage",
+          "arguments": [
+            "read",
+            "write"
+          ]
+        }
+      ]
+    },
+    {
+      "inputs": [
+        {
           "name": "user",
           "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335"
         }
@@ -1861,6 +2050,10 @@ const abi = {
       "concreteTypeId": "aeb9b947da259c606e2c25be1150e2150f609fe5f2ec593c9a7ebb771e4e7065"
     },
     {
+      "logId": "12112124172827649831",
+      "concreteTypeId": "a816e8c32cd06727c61df456d4cf8d2fcb9bef4cd1381a945ff36176f8132a6a"
+    },
+    {
       "logId": "7812135309850120461",
       "concreteTypeId": "6c6a47ac80e7110dd8666e169f0fffe2d1378df88cf8960bb9dfe14a84ac3495"
     },
@@ -1891,6 +2084,10 @@ const abi = {
     {
       "logId": "10918704871079408520",
       "concreteTypeId": "9787083b0003f388ec6bf30609ff6a10c76fada67314a162841a445b07a17168"
+    },
+    {
+      "logId": "12551359631505241447",
+      "concreteTypeId": "ae2f6315bc0c35670e520b82df972bee3ba559d15fb2ef3864cfe265f3802fb6"
     }
   ],
   "messagesTypes": [],
@@ -1898,37 +2095,37 @@ const abi = {
     {
       "name": "BASE_ASSET",
       "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
-      "offset": 91088
+      "offset": 96728
     },
     {
       "name": "BASE_ASSET_DECIMALS",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 91120
+      "offset": 96760
     },
     {
       "name": "QUOTE_ASSET",
       "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
-      "offset": 91176
+      "offset": 96816
     },
     {
       "name": "QUOTE_ASSET_DECIMALS",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 91208
+      "offset": 96848
     },
     {
       "name": "OWNER",
       "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335",
-      "offset": 91128
+      "offset": 96768
     },
     {
       "name": "PRICE_DECIMALS",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 91168
+      "offset": 96808
     },
     {
       "name": "VERSION",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 91216
+      "offset": 96856
     }
   ]
 };
@@ -1943,6 +2140,7 @@ export class SparkMarketInterface extends Interface {
   declare functions: {
     cancel_order: FunctionFragment;
     deposit: FunctionFragment;
+    deposit_for: FunctionFragment;
     fulfill_order_many: FunctionFragment;
     match_order_many: FunctionFragment;
     match_order_pair: FunctionFragment;
@@ -1952,6 +2150,7 @@ export class SparkMarketInterface extends Interface {
     set_protocol_fee: FunctionFragment;
     set_store_order_change_info: FunctionFragment;
     withdraw: FunctionFragment;
+    withdraw_to_market: FunctionFragment;
     account: FunctionFragment;
     config: FunctionFragment;
     get_epoch: FunctionFragment;
@@ -1975,6 +2174,7 @@ export class SparkMarket extends Contract {
   declare functions: {
     cancel_order: InvokeFunction<[order_id: string], void>;
     deposit: InvokeFunction<[], void>;
+    deposit_for: InvokeFunction<[user: IdentityInput], void>;
     fulfill_order_many: InvokeFunction<[amount: BigNumberish, order_type: OrderTypeInput, limit_type: LimitTypeInput, price: BigNumberish, slippage: BigNumberish, orders: Vec<string>], string>;
     match_order_many: InvokeFunction<[orders: Vec<string>], void>;
     match_order_pair: InvokeFunction<[order0_id: string, order1_id: string], void>;
@@ -1984,6 +2184,7 @@ export class SparkMarket extends Contract {
     set_protocol_fee: InvokeFunction<[protocol_fee: Vec<ProtocolFeeInput>], void>;
     set_store_order_change_info: InvokeFunction<[store: boolean], void>;
     withdraw: InvokeFunction<[amount: BigNumberish, asset_type: AssetTypeInput], void>;
+    withdraw_to_market: InvokeFunction<[amount: BigNumberish, asset_type: AssetTypeInput, market: ContractIdInput], void>;
     account: InvokeFunction<[user: IdentityInput], AccountOutput>;
     config: InvokeFunction<[], [AssetIdOutput, number, AssetIdOutput, number, IdentityOutput, number, number]>;
     get_epoch: InvokeFunction<[], [BN, BN]>;

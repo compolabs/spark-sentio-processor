@@ -17,10 +17,10 @@ const marketTemplate = new SparkMarketProcessorTemplate()
 
     .onLogDepositEvent(async (deposit, ctx) => {
 
-        const liquidBaseAmount = BigInt(deposit.data.balance.liquid.base.toString());
-        const liquidQuoteAmount = BigInt(deposit.data.balance.liquid.quote.toString());
-        const lockedBaseAmount = BigInt(deposit.data.balance.locked.base.toString());
-        const lockedQuoteAmount = BigInt(deposit.data.balance.locked.quote.toString());
+        const liquidBaseAmount = BigInt(deposit.data.account.liquid.base.toString());
+        const liquidQuoteAmount = BigInt(deposit.data.account.liquid.quote.toString());
+        const lockedBaseAmount = BigInt(deposit.data.account.locked.base.toString());
+        const lockedQuoteAmount = BigInt(deposit.data.account.locked.quote.toString());
 
         const balanceId = getHash(`${deposit.data.user.Address?.bits}-${ctx.contractAddress}`);
 
@@ -47,10 +47,10 @@ const marketTemplate = new SparkMarketProcessorTemplate()
     })
     .onLogWithdrawEvent(async (withdraw, ctx) => {
 
-        const liquidBaseAmount = BigInt(withdraw.data.balance.liquid.base.toString());
-        const liquidQuoteAmount = BigInt(withdraw.data.balance.liquid.quote.toString());
-        const lockedBaseAmount = BigInt(withdraw.data.balance.locked.base.toString());
-        const lockedQuoteAmount = BigInt(withdraw.data.balance.locked.quote.toString());
+        const liquidBaseAmount = BigInt(withdraw.data.account.liquid.base.toString());
+        const liquidQuoteAmount = BigInt(withdraw.data.account.liquid.quote.toString());
+        const lockedBaseAmount = BigInt(withdraw.data.account.locked.base.toString());
+        const lockedQuoteAmount = BigInt(withdraw.data.account.locked.quote.toString());
 
         const balanceId = getHash(`${withdraw.data.user.Address?.bits}-${ctx.contractAddress}`);
 
