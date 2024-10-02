@@ -56,21 +56,21 @@ const marketTemplate = new SparkMarketProcessorTemplate()
 
         let balance = await ctx.store.get(Balance, balanceId);
 
-        if (!balance) {
+        if (balance) {
+            balance.liquidBaseAmount = liquidBaseAmount,
+                balance.liquidQuoteAmount = liquidQuoteAmount,
+                balance.lockedBaseAmount = lockedBaseAmount,
+                balance.lockedQuoteAmount = lockedQuoteAmount
+
+            await ctx.store.upsert(balance);
+        } else {
             ctx.eventLogger.emit('Balance not found with withdraw event', {
                 severity: LogLevel.ERROR,
                 user: withdraw.data.user.Address?.bits,
                 reason: 'Balance not found for user',
             });
-            return
-        } else {
-            balance.liquidBaseAmount = liquidBaseAmount,
-                balance.liquidQuoteAmount = liquidQuoteAmount,
-                balance.lockedBaseAmount = lockedBaseAmount,
-                balance.lockedQuoteAmount = lockedQuoteAmount
         }
 
-        await ctx.store.upsert(balance);
     })
     .onLogOpenOrderEvent(async (open, ctx: any) => {
 
@@ -83,21 +83,21 @@ const marketTemplate = new SparkMarketProcessorTemplate()
 
         let balance = await ctx.store.get(Balance, balanceId);
 
-        if (!balance) {
+        if (balance) {
+            balance.liquidBaseAmount = liquidBaseAmount,
+                balance.liquidQuoteAmount = liquidQuoteAmount,
+                balance.lockedBaseAmount = lockedBaseAmount,
+                balance.lockedQuoteAmount = lockedQuoteAmount
+
+            await ctx.store.upsert(balance);
+        } else {
             ctx.eventLogger.emit('Balance not found with open order event', {
                 severity: LogLevel.ERROR,
                 user: open.data.user.Address?.bits,
                 reason: 'Balance not found for user',
             });
-            return
-        } else {
-            balance.liquidBaseAmount = liquidBaseAmount,
-                balance.liquidQuoteAmount = liquidQuoteAmount,
-                balance.lockedBaseAmount = lockedBaseAmount,
-                balance.lockedQuoteAmount = lockedQuoteAmount
         }
 
-        await ctx.store.upsert(balance);
     })
     .onLogCancelOrderEvent(async (cancel, ctx: any) => {
 
@@ -110,21 +110,21 @@ const marketTemplate = new SparkMarketProcessorTemplate()
 
         let balance = await ctx.store.get(Balance, balanceId);
 
-        if (!balance) {
+        if (balance) {
+            balance.liquidBaseAmount = liquidBaseAmount,
+                balance.liquidQuoteAmount = liquidQuoteAmount,
+                balance.lockedBaseAmount = lockedBaseAmount,
+                balance.lockedQuoteAmount = lockedQuoteAmount
+
+            await ctx.store.upsert(balance);
+        } else {
             ctx.eventLogger.emit('Balance not found with cancel event', {
                 severity: LogLevel.ERROR,
                 user: cancel.data.user.Address?.bits,
                 reason: 'Balance not found for user',
             });
-            return
-        } else {
-            balance.liquidBaseAmount = liquidBaseAmount,
-                balance.liquidQuoteAmount = liquidQuoteAmount,
-                balance.lockedBaseAmount = lockedBaseAmount,
-                balance.lockedQuoteAmount = lockedQuoteAmount
         }
 
-        await ctx.store.upsert(balance);
     })
     .onLogTradeOrderEvent(async (trade, ctx: any) => {
 
@@ -144,37 +144,35 @@ const marketTemplate = new SparkMarketProcessorTemplate()
         let seller_balance = await ctx.store.get(Balance, seller_balanceId);
         let buyer_balance = await ctx.store.get(Balance, buyer_balanceId);
 
-        if (!seller_balance) {
+        if (seller_balance) {
+            seller_balance.liquidBaseAmount = seller_liquidBaseAmount,
+                seller_balance.liquidQuoteAmount = seller_liquidQuoteAmount,
+                seller_balance.lockedBaseAmount = seller_lockedBaseAmount,
+                seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount
+
+            await ctx.store.upsert(seller_balance);
+        } else {
             ctx.eventLogger.emit('Balance not found with trade event', {
                 severity: LogLevel.ERROR,
                 user: trade.data.order_seller.Address?.bits,
                 reason: 'Balance not found for seller',
             });
-            return
-        } else {
-            seller_balance.liquidBaseAmount = seller_liquidBaseAmount,
-                seller_balance.liquidQuoteAmount = seller_liquidQuoteAmount,
-                seller_balance.lockedBaseAmount = seller_lockedBaseAmount,
-                seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount
         }
 
-        await ctx.store.upsert(seller_balance);
-
         if (!buyer_balance) {
+            buyer_balance.liquidBaseAmount = buyer_liquidBaseAmount,
+                buyer_balance.liquidQuoteAmount = buyer_liquidQuoteAmount,
+                buyer_balance.lockedBaseAmount = buyer_lockedBaseAmount,
+                buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount
+
+            await ctx.store.upsert(buyer_balance);
+        } else {
             ctx.eventLogger.emit('Balance not found with trade event', {
                 severity: LogLevel.ERROR,
                 user: trade.data.order_buyer.Address?.bits,
                 reason: 'Balance not found for buyer',
             });
-            return
-        } else {
-            buyer_balance.liquidBaseAmount = buyer_liquidBaseAmount,
-                buyer_balance.liquidQuoteAmount = buyer_liquidQuoteAmount,
-                buyer_balance.lockedBaseAmount = buyer_lockedBaseAmount,
-                buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount
         }
-
-        await ctx.store.upsert(buyer_balance);
     });
 
 
@@ -242,19 +240,21 @@ marketTemplate.onTimeInterval(async (block, ctx) => {
         await ctx.store.upsert(snapshot);
 
         ctx.eventLogger.emit('Snapshot', {
-            severity: LogLevel.INFO,
             message: `Snapshot for user ${balance.user}: ${new Date().toISOString()}`,
+            severity: LogLevel.INFO,
+            market: marketConfig.name,
             timestamp: new Date().toISOString(),
             block_date: ctx.timestamp.toString(),
-            chain_id: ctx.chainId,
             block_number: block.height.toString(),
             user_address: balance.user,
             pool_address: ctx.contractAddress,
-            total_value_locked_score: tvl
+            total_value_locked_score: tvl,
+            baseTokenPrice: baseTokenPrice.toString(),
+            quoteTokenPrice: quoteTokenPrice.toString()
         });
 
     }
-}, 60 * 60);
+}, 60);
 
 SparkRegistryProcessor.bind({
     address: REGISTRY_ADDRESS,
