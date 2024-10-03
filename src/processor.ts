@@ -45,6 +45,37 @@ MARKETS.forEach((market) => {
             }
 
             await ctx.store.upsert(balance);
+
+
+            // for (const [marketName, marketConfig] of Object.entries(marketsConfig)) {
+            //     // Пропускаем текущий маркет, так как он уже обработан
+            //     if (marketConfig.market === ctx.contractAddress) {
+            //         continue;
+            //     }
+
+            //     const otherBalanceId = getHash(`${deposit.data.user.Address?.bits}-${marketConfig.market}`);
+            //     let otherBalance = await ctx.store.get(Balance, otherBalanceId);
+
+            //     // Если баланса на другом маркете не существует, создаем его с нулевыми значениями
+            //     if (!otherBalance) {
+            //         otherBalance = new Balance({
+            //             id: otherBalanceId,
+            //             user: deposit.data.user.Address?.bits,
+            //             market: marketConfig.market,  // Маркет из конфига
+            //             liquidBaseAmount: BigInt(0),  // Нулевые значения для других маркетов
+            //             liquidQuoteAmount: BigInt(0),
+            //             lockedBaseAmount: BigInt(0),
+            //             lockedQuoteAmount: BigInt(0)
+            //         });
+
+            //         await ctx.store.upsert(otherBalance);
+            //         ctx.eventLogger.emit('NewBalanceCreated', {
+            //             message: `Создан новый баланс для пользователя на маркете ${marketName}`,
+            //             market: marketName,
+            //             user: deposit.data.user.Address?.bits
+            //         });
+            //     }
+            // }
         })
         .onLogWithdrawEvent(async (withdraw, ctx) => {
 
@@ -65,12 +96,48 @@ MARKETS.forEach((market) => {
 
                 await ctx.store.upsert(balance);
             } else {
-                ctx.eventLogger.emit('BALANCE WITHDRAW', {
-                    severity: LogLevel.ERROR,
+                balance = new Balance({
+                    id: balanceId,
                     user: withdraw.data.user.Address?.bits,
-                    balance: balanceId,
-                    reason: 'No balance for user',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
                 });
+                await ctx.store.upsert(balance);
+            }
+
+        })
+        .onLogWithdrawToMarketEvent(async (withdrawTo, ctx) => {
+
+            const liquidBaseAmount = BigInt(withdrawTo.data.account.liquid.base.toString());
+            const liquidQuoteAmount = BigInt(withdrawTo.data.account.liquid.quote.toString());
+            const lockedBaseAmount = BigInt(withdrawTo.data.account.locked.base.toString());
+            const lockedQuoteAmount = BigInt(withdrawTo.data.account.locked.quote.toString());
+
+            const balanceId = getHash(`${withdrawTo.data.user.Address?.bits}-${ctx.contractAddress}`);
+
+            let balance = await ctx.store.get(Balance, balanceId);
+
+            if (balance) {
+                balance.liquidBaseAmount = liquidBaseAmount,
+                    balance.liquidQuoteAmount = liquidQuoteAmount,
+                    balance.lockedBaseAmount = lockedBaseAmount,
+                    balance.lockedQuoteAmount = lockedQuoteAmount
+
+                await ctx.store.upsert(balance);
+            } else {
+                balance = new Balance({
+                    id: balanceId,
+                    user: withdrawTo.data.user.Address?.bits,
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
+                });
+                await ctx.store.upsert(balance);
             }
 
         })
@@ -93,12 +160,16 @@ MARKETS.forEach((market) => {
 
                 await ctx.store.upsert(balance);
             } else {
-                ctx.eventLogger.emit('BALANCE OPEN', {
-                    severity: LogLevel.ERROR,
+                balance = new Balance({
+                    id: balanceId,
                     user: open.data.user.Address?.bits,
-                    balance: balanceId,
-                    reason: 'No balance for user',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
                 });
+                await ctx.store.upsert(balance);
             }
 
         })
