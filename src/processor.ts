@@ -6,7 +6,11 @@ import marketsConfig from './marketsConfig.json';
 import { Balance, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { MARKETS } from "./markets.js";
+// import { GLOBAL_CONFIG } from "@sentio/runtime"
 
+// GLOBAL_CONFIG.execution = {
+//     sequential: true,
+// }
 export const getHash = (data: string) => {
     return crypto.createHash("sha256").update(data).digest("hex");
 };
@@ -27,7 +31,12 @@ MARKETS.forEach((market) => {
 
             let balance = await ctx.store.get(Balance, balanceId);
 
-            if (!balance) {
+            if (balance) {
+                balance.liquidBaseAmount = liquidBaseAmount,
+                    balance.liquidQuoteAmount = liquidQuoteAmount,
+                    balance.lockedBaseAmount = lockedBaseAmount,
+                    balance.lockedQuoteAmount = lockedQuoteAmount
+            } else {
                 balance = new Balance({
                     id: balanceId,
                     user: deposit.data.user.Address?.bits,
@@ -37,13 +46,7 @@ MARKETS.forEach((market) => {
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount
                 });
-            } else {
-                balance.liquidBaseAmount = liquidBaseAmount,
-                    balance.liquidQuoteAmount = liquidQuoteAmount,
-                    balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount
             }
-
             await ctx.store.upsert(balance);
 
 
@@ -77,6 +80,36 @@ MARKETS.forEach((market) => {
             //     }
             // }
         })
+        .onLogDepositForEvent(async (depositTo, ctx) => {
+
+            const liquidBaseAmount = BigInt(depositTo.data.account.liquid.base.toString());
+            const liquidQuoteAmount = BigInt(depositTo.data.account.liquid.quote.toString());
+            const lockedBaseAmount = BigInt(depositTo.data.account.locked.base.toString());
+            const lockedQuoteAmount = BigInt(depositTo.data.account.locked.quote.toString());
+
+            const balanceId = getHash(`${depositTo.data.user.Address?.bits}-${ctx.contractAddress}`);
+
+            let balance = await ctx.store.get(Balance, balanceId);
+
+            if (balance) {
+                balance.liquidBaseAmount = liquidBaseAmount,
+                    balance.liquidQuoteAmount = liquidQuoteAmount,
+                    balance.lockedBaseAmount = lockedBaseAmount,
+                    balance.lockedQuoteAmount = lockedQuoteAmount
+            } else {
+                balance = new Balance({
+                    id: balanceId,
+                    user: depositTo.data.user.Address?.bits,
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
+                });
+            }
+            await ctx.store.upsert(balance);
+
+        })
         .onLogWithdrawEvent(async (withdraw, ctx) => {
 
             const liquidBaseAmount = BigInt(withdraw.data.account.liquid.base.toString());
@@ -96,16 +129,12 @@ MARKETS.forEach((market) => {
 
                 await ctx.store.upsert(balance);
             } else {
-                balance = new Balance({
-                    id: balanceId,
+                ctx.eventLogger.emit('BALANCE WITHDRAW', {
+                    severity: LogLevel.ERROR,
                     user: withdraw.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    balance: balanceId,
+                    reason: 'No balance for user',
                 });
-                await ctx.store.upsert(balance);
             }
 
         })
@@ -128,19 +157,16 @@ MARKETS.forEach((market) => {
 
                 await ctx.store.upsert(balance);
             } else {
-                balance = new Balance({
-                    id: balanceId,
+                ctx.eventLogger.emit('BALANCE WITHDRAW_TO', {
+                    severity: LogLevel.ERROR,
                     user: withdrawTo.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    balance: balanceId,
+                    reason: 'No balance for user',
                 });
-                await ctx.store.upsert(balance);
             }
 
         })
+
         .onLogOpenOrderEvent(async (open, ctx: any) => {
 
             const liquidBaseAmount = BigInt(open.data.balance.liquid.base.toString());
@@ -160,16 +186,12 @@ MARKETS.forEach((market) => {
 
                 await ctx.store.upsert(balance);
             } else {
-                balance = new Balance({
-                    id: balanceId,
+                ctx.eventLogger.emit('BALANCE OPEN', {
+                    severity: LogLevel.ERROR,
                     user: open.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    balance: balanceId,
+                    reason: 'No balance for user',
                 });
-                await ctx.store.upsert(balance);
             }
 
         })
