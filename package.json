@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "spark-processor",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "build": "sentio build",

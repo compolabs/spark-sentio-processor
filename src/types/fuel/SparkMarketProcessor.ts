@@ -5,7 +5,7 @@
     
 import { FuelAbstractProcessor, FuelContractContext, FuelProcessorConfig, TypedCall, FuelFetchConfig, FuelCall, FuelLog, addFuelProcessor, getFuelProcessor, FuelBaseProcessorTemplate } from '@sentio/sdk/fuel'
 import {Option,Enum,Vec} from './common.js'
-import {AssetTypeInput,AssetTypeOutput,LimitTypeInput,LimitTypeOutput,OrderChangeTypeInput,OrderChangeTypeOutput,OrderTypeInput,OrderTypeOutput,AccountErrorInput,AccountErrorOutput,AssetErrorInput,AssetErrorOutput,AuthErrorInput,AuthErrorOutput,MatchErrorInput,MatchErrorOutput,OrderErrorInput,OrderErrorOutput,ValueErrorInput,ValueErrorOutput,IdentityInput,IdentityOutput,ReentrancyErrorInput,ReentrancyErrorOutput,AccountInput,AccountOutput,BalanceInput,BalanceOutput,OrderInput,OrderOutput,OrderChangeInfoInput,OrderChangeInfoOutput,ProtocolFeeInput,ProtocolFeeOutput,CancelOrderEventInput,CancelOrderEventOutput,DepositEventInput,DepositEventOutput,DepositForEventInput,DepositForEventOutput,OpenOrderEventInput,OpenOrderEventOutput,SetEpochEventInput,SetEpochEventOutput,SetMatcherRewardEventInput,SetMatcherRewardEventOutput,SetProtocolFeeEventInput,SetProtocolFeeEventOutput,SetStoreOrderChangeInfoEventInput,SetStoreOrderChangeInfoEventOutput,TradeOrderEventInput,TradeOrderEventOutput,WithdrawEventInput,WithdrawEventOutput,WithdrawToMarketEventInput,WithdrawToMarketEventOutput,AddressInput,AddressOutput,AssetIdInput,AssetIdOutput,ContractIdInput,ContractIdOutput, SparkMarket} from './SparkMarket.js'
+import {AssetTypeInput,AssetTypeOutput,LimitTypeInput,LimitTypeOutput,OrderChangeTypeInput,OrderChangeTypeOutput,OrderTypeInput,OrderTypeOutput,AccountErrorInput,AccountErrorOutput,AssetErrorInput,AssetErrorOutput,AuthErrorInput,AuthErrorOutput,MatchErrorInput,MatchErrorOutput,MathErrorInput,MathErrorOutput,OrderErrorInput,OrderErrorOutput,ValueErrorInput,ValueErrorOutput,AccessErrorInput,AccessErrorOutput,StateInput,StateOutput,IdentityInput,IdentityOutput,ReentrancyErrorInput,ReentrancyErrorOutput,AccountInput,AccountOutput,BalanceInput,BalanceOutput,OrderInput,OrderOutput,OrderChangeInfoInput,OrderChangeInfoOutput,ProtocolFeeInput,ProtocolFeeOutput,CancelOrderEventInput,CancelOrderEventOutput,DepositEventInput,DepositEventOutput,DepositForEventInput,DepositForEventOutput,OpenOrderEventInput,OpenOrderEventOutput,SetEpochEventInput,SetEpochEventOutput,SetMatcherRewardEventInput,SetMatcherRewardEventOutput,SetProtocolFeeEventInput,SetProtocolFeeEventOutput,SetStoreOrderChangeInfoEventInput,SetStoreOrderChangeInfoEventOutput,TradeOrderEventInput,TradeOrderEventOutput,WithdrawEventInput,WithdrawEventOutput,WithdrawToMarketEventInput,WithdrawToMarketEventOutput,AddressInput,AddressOutput,AssetIdInput,AssetIdOutput,ContractIdInput,ContractIdOutput, SparkMarket} from './SparkMarket.js'
 
 import type { BigNumberish, BN } from 'fuels';
 import type { BytesLike, Bytes } from 'fuels';
@@ -24,6 +24,10 @@ namespace SparkMarketNS {
 
     getLogsOfTypeAuthError(): Array<AuthErrorOutput> {
       return this.logs?.filter(l =>["487470194140633944"].includes(l.logId) ).map(l => l.data) as Array<AuthErrorOutput>
+    }
+
+    getLogsOfTypeMathError(): Array<MathErrorOutput> {
+      return this.logs?.filter(l =>["6987413341206404123"].includes(l.logId) ).map(l => l.data) as Array<MathErrorOutput>
     }
 
     getLogsOfTypeAccountError(): Array<AccountErrorOutput> {
@@ -66,6 +70,10 @@ namespace SparkMarketNS {
       return this.logs?.filter(l =>["15838754841496526215"].includes(l.logId) ).map(l => l.data) as Array<MatchErrorOutput>
     }
 
+    getLogsOfTypeAccessError(): Array<AccessErrorOutput> {
+      return this.logs?.filter(l =>["4571204900286667806"].includes(l.logId) ).map(l => l.data) as Array<AccessErrorOutput>
+    }
+
     getLogsOfTypeSetMatcherRewardEvent(): Array<SetMatcherRewardEventOutput> {
       return this.logs?.filter(l =>["649664855397936830"].includes(l.logId) ).map(l => l.data) as Array<SetMatcherRewardEventOutput>
     }
@@ -94,6 +102,7 @@ type LogIdFilter<T> = T | T[]
 const LogReentrancyErrorId = "5557842539076482339"
 const LogOrderErrorId = "999626799421532101"
 const LogAuthErrorId = "487470194140633944"
+const LogMathErrorId = "6987413341206404123"
 const LogAccountErrorId = "15329379498675066312"
 const LogCancelOrderEventId = "14676650066558707344"
 const LogValueErrorId = "4038555509566971562"
@@ -104,6 +113,7 @@ const LogOpenOrderEventId = "7812135309850120461"
 const LogSetEpochEventId = "5744192922338635869"
 const LogTradeOrderEventId = "18305104039093136274"
 const LogMatchErrorId = "15838754841496526215"
+const LogAccessErrorId = "4571204900286667806"
 const LogSetMatcherRewardEventId = "649664855397936830"
 const LogSetProtocolFeeEventId = "10772010129570911307"
 const LogSetStoreOrderChangeInfoEventId = "3792793406740277287"
@@ -139,6 +149,10 @@ export class SparkMarketProcessor extends FuelAbstractProcessor<SparkMarket> {
 
   onLogAuthError(handler: (log: FuelLog<AuthErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<AuthErrorOutput>([LogAuthErrorId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogMathError(handler: (log: FuelLog<MathErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<MathErrorOutput>([LogMathErrorId], (log, ctx) => handler(log, ctx))
   }
 
   onLogAccountError(handler: (log: FuelLog<AccountErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
@@ -179,6 +193,10 @@ export class SparkMarketProcessor extends FuelAbstractProcessor<SparkMarket> {
 
   onLogMatchError(handler: (log: FuelLog<MatchErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<MatchErrorOutput>([LogMatchErrorId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogAccessError(handler: (log: FuelLog<AccessErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<AccessErrorOutput>([LogAccessErrorId], (log, ctx) => handler(log, ctx))
   }
 
   onLogSetMatcherRewardEvent(handler: (log: FuelLog<SetMatcherRewardEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
@@ -221,6 +239,10 @@ export class SparkMarketProcessorTemplate extends FuelBaseProcessorTemplate<Spar
     return super.onLog<AuthErrorOutput>([LogAuthErrorId], (log, ctx) => handler(log, ctx))
   }
 
+  onLogMathError(handler: (log: FuelLog<MathErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<MathErrorOutput>([LogMathErrorId], (log, ctx) => handler(log, ctx))
+  }
+
   onLogAccountError(handler: (log: FuelLog<AccountErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<AccountErrorOutput>([LogAccountErrorId], (log, ctx) => handler(log, ctx))
   }
@@ -259,6 +281,10 @@ export class SparkMarketProcessorTemplate extends FuelBaseProcessorTemplate<Spar
 
   onLogMatchError(handler: (log: FuelLog<MatchErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
     return super.onLog<MatchErrorOutput>([LogMatchErrorId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogAccessError(handler: (log: FuelLog<AccessErrorOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
+    return super.onLog<AccessErrorOutput>([LogAccessErrorId], (log, ctx) => handler(log, ctx))
   }
 
   onLogSetMatcherRewardEvent(handler: (log: FuelLog<SetMatcherRewardEventOutput>, ctx: FuelContractContext<SparkMarket>) => void | Promise<void>) {
