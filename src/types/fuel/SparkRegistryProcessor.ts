@@ -5,7 +5,7 @@
     
 import { FuelAbstractProcessor, FuelContractContext, FuelProcessorConfig, TypedCall, FuelFetchConfig, FuelCall, FuelLog, addFuelProcessor, getFuelProcessor, FuelBaseProcessorTemplate } from '@sentio/sdk/fuel'
 import {Option,Enum,Vec} from './common.js'
-import {AuthErrorInput,AuthErrorOutput,MarketRegistryErrorInput,MarketRegistryErrorOutput,MarketRegisterEventInput,MarketRegisterEventOutput,MarketUnregisterEventInput,MarketUnregisterEventOutput,AddressInput,AddressOutput,AssetIdInput,AssetIdOutput,ContractIdInput,ContractIdOutput, SparkRegistry} from './SparkRegistry.js'
+import {MarketRegistryErrorInput,MarketRegistryErrorOutput,AccessErrorInput,AccessErrorOutput,StateInput,StateOutput,IdentityInput,IdentityOutput,InitializationErrorInput,InitializationErrorOutput,MarketRegisterEventInput,MarketRegisterEventOutput,MarketUnregisterEventInput,MarketUnregisterEventOutput,AddressInput,AddressOutput,AssetIdInput,AssetIdOutput,ContractIdInput,ContractIdOutput,OwnershipSetInput,OwnershipSetOutput,OwnershipTransferredInput,OwnershipTransferredOutput, SparkRegistry} from './SparkRegistry.js'
 
 import type { BigNumberish, BN } from 'fuels';
 import type { BytesLike, Bytes } from 'fuels';
@@ -14,8 +14,20 @@ import type { BytesLike, Bytes } from 'fuels';
 namespace SparkRegistryNS {
   export abstract class CallWithLogs<T extends Array<any>, R> extends TypedCall<T, R> {
 
-    getLogsOfTypeAuthError(): Array<AuthErrorOutput> {
-      return this.logs?.filter(l =>["487470194140633944"].includes(l.logId) ).map(l => l.data) as Array<AuthErrorOutput>
+    getLogsOfTypeInitializationError(): Array<InitializationErrorOutput> {
+      return this.logs?.filter(l =>["2161305517876418151"].includes(l.logId) ).map(l => l.data) as Array<InitializationErrorOutput>
+    }
+
+    getLogsOfTypeOwnershipSet(): Array<OwnershipSetOutput> {
+      return this.logs?.filter(l =>["16280289466020123285"].includes(l.logId) ).map(l => l.data) as Array<OwnershipSetOutput>
+    }
+
+    getLogsOfTypeAccessError(): Array<AccessErrorOutput> {
+      return this.logs?.filter(l =>["4571204900286667806"].includes(l.logId) ).map(l => l.data) as Array<AccessErrorOutput>
+    }
+
+    getLogsOfTypeOwnershipTransferred(): Array<OwnershipTransferredOutput> {
+      return this.logs?.filter(l =>["12970362301975156672"].includes(l.logId) ).map(l => l.data) as Array<OwnershipTransferredOutput>
     }
 
     getLogsOfTypeMarketRegistryError(): Array<MarketRegistryErrorOutput> {
@@ -35,7 +47,10 @@ namespace SparkRegistryNS {
 }
 
 type LogIdFilter<T> = T | T[]
-const LogAuthErrorId = "487470194140633944"
+const LogInitializationErrorId = "2161305517876418151"
+const LogOwnershipSetId = "16280289466020123285"
+const LogAccessErrorId = "4571204900286667806"
+const LogOwnershipTransferredId = "12970362301975156672"
 const LogMarketRegistryErrorId = "12854673644547923665"
 const LogMarketRegisterEventId = "16526329487357911494"
 const LogMarketUnregisterEventId = "8687802410378175690"
@@ -59,8 +74,20 @@ export class SparkRegistryProcessor extends FuelAbstractProcessor<SparkRegistry>
    
 
   
-  onLogAuthError(handler: (log: FuelLog<AuthErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
-    return super.onLog<AuthErrorOutput>([LogAuthErrorId], (log, ctx) => handler(log, ctx))
+  onLogInitializationError(handler: (log: FuelLog<InitializationErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<InitializationErrorOutput>([LogInitializationErrorId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogOwnershipSet(handler: (log: FuelLog<OwnershipSetOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<OwnershipSetOutput>([LogOwnershipSetId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogAccessError(handler: (log: FuelLog<AccessErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<AccessErrorOutput>([LogAccessErrorId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogOwnershipTransferred(handler: (log: FuelLog<OwnershipTransferredOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<OwnershipTransferredOutput>([LogOwnershipTransferredId], (log, ctx) => handler(log, ctx))
   }
 
   onLogMarketRegistryError(handler: (log: FuelLog<MarketRegistryErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
@@ -83,8 +110,20 @@ export class SparkRegistryProcessorTemplate extends FuelBaseProcessorTemplate<Sp
   }
 
   
-  onLogAuthError(handler: (log: FuelLog<AuthErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
-    return super.onLog<AuthErrorOutput>([LogAuthErrorId], (log, ctx) => handler(log, ctx))
+  onLogInitializationError(handler: (log: FuelLog<InitializationErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<InitializationErrorOutput>([LogInitializationErrorId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogOwnershipSet(handler: (log: FuelLog<OwnershipSetOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<OwnershipSetOutput>([LogOwnershipSetId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogAccessError(handler: (log: FuelLog<AccessErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<AccessErrorOutput>([LogAccessErrorId], (log, ctx) => handler(log, ctx))
+  }
+
+  onLogOwnershipTransferred(handler: (log: FuelLog<OwnershipTransferredOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {
+    return super.onLog<OwnershipTransferredOutput>([LogOwnershipTransferredId], (log, ctx) => handler(log, ctx))
   }
 
   onLogMarketRegistryError(handler: (log: FuelLog<MarketRegistryErrorOutput>, ctx: FuelContractContext<SparkRegistry>) => void | Promise<void>) {

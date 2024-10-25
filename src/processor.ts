@@ -18,7 +18,7 @@ export const getHash = (data: string) => {
 MARKETS.forEach((market) => {
     SparkMarketProcessor.bind({
         address: market,
-        chainId: FuelNetwork.TEST_NET
+        chainId: FuelNetwork.MAIN_NET
     })
         .onLogDepositEvent(async (deposit, ctx) => {
 
@@ -40,66 +40,6 @@ MARKETS.forEach((market) => {
                 balance = new Balance({
                     id: balanceId,
                     user: deposit.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
-                });
-            }
-            await ctx.store.upsert(balance);
-
-
-            // for (const [marketName, marketConfig] of Object.entries(marketsConfig)) {
-            //     // Пропускаем текущий маркет, так как он уже обработан
-            //     if (marketConfig.market === ctx.contractAddress) {
-            //         continue;
-            //     }
-
-            //     const otherBalanceId = getHash(`${deposit.data.user.Address?.bits}-${marketConfig.market}`);
-            //     let otherBalance = await ctx.store.get(Balance, otherBalanceId);
-
-            //     // Если баланса на другом маркете не существует, создаем его с нулевыми значениями
-            //     if (!otherBalance) {
-            //         otherBalance = new Balance({
-            //             id: otherBalanceId,
-            //             user: deposit.data.user.Address?.bits,
-            //             market: marketConfig.market,  // Маркет из конфига
-            //             liquidBaseAmount: BigInt(0),  // Нулевые значения для других маркетов
-            //             liquidQuoteAmount: BigInt(0),
-            //             lockedBaseAmount: BigInt(0),
-            //             lockedQuoteAmount: BigInt(0)
-            //         });
-
-            //         await ctx.store.upsert(otherBalance);
-            //         ctx.eventLogger.emit('NewBalanceCreated', {
-            //             message: `Создан новый баланс для пользователя на маркете ${marketName}`,
-            //             market: marketName,
-            //             user: deposit.data.user.Address?.bits
-            //         });
-            //     }
-            // }
-        })
-        .onLogDepositForEvent(async (depositTo, ctx) => {
-
-            const liquidBaseAmount = BigInt(depositTo.data.account.liquid.base.toString());
-            const liquidQuoteAmount = BigInt(depositTo.data.account.liquid.quote.toString());
-            const lockedBaseAmount = BigInt(depositTo.data.account.locked.base.toString());
-            const lockedQuoteAmount = BigInt(depositTo.data.account.locked.quote.toString());
-
-            const balanceId = getHash(`${depositTo.data.user.Address?.bits}-${ctx.contractAddress}`);
-
-            let balance = await ctx.store.get(Balance, balanceId);
-
-            if (balance) {
-                balance.liquidBaseAmount = liquidBaseAmount,
-                    balance.liquidQuoteAmount = liquidQuoteAmount,
-                    balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount
-            } else {
-                balance = new Balance({
-                    id: balanceId,
-                    user: depositTo.data.user.Address?.bits,
                     market: ctx.contractAddress,
                     liquidBaseAmount: liquidBaseAmount,
                     liquidQuoteAmount: liquidQuoteAmount,
@@ -325,13 +265,14 @@ MARKETS.forEach((market) => {
                 const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${ctx.transaction}`);
                 const snapshot = new UserScoreSnapshot({
                     id: snapshotId,
-                    timestamp: new Date().toISOString(),
-                    block_date: ctx.timestamp.toString(),
-                    chain_id: ctx.chainId,
-                    block_number: block.height.toString(),
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                    block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
+                    chain_id: Number(ctx.chainId),
+                    block_number: Number(block.height),
                     user_address: balance.user,
                     pool_address: ctx.contractAddress,
-                    total_value_locked_score: tvl
+                    total_value_locked_score: Number(tvl),
+                    market_depth_score: undefined
                 });
 
                 await ctx.store.upsert(snapshot);

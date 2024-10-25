@@ -53,20 +53,20 @@ export class UserScoreSnapshot extends AbstractEntity  {
 	id: ID
 
 	@Required
-	@Column("String")
-	timestamp: String
+	@Column("Int")
+	timestamp: Int
 
 	@Required
 	@Column("String")
 	block_date: String
 
 	@Required
-	@Column("String")
-	chain_id: String
+	@Column("Int")
+	chain_id: Int
 
 	@Required
-	@Column("String")
-	block_number: String
+	@Column("Int")
+	block_number: Int
 
 	@Required
 	@Column("String")
@@ -77,8 +77,11 @@ export class UserScoreSnapshot extends AbstractEntity  {
 	pool_address: String
 
 	@Required
-	@Column("String")
-	total_value_locked_score: String
+	@Column("Int")
+	total_value_locked_score: Int
+
+	@Column("Int")
+	market_depth_score?: Int
   constructor(data: Partial<UserScoreSnapshot>) {super()}
 }
 
@@ -95,13 +98,14 @@ const source = `type Balance @entity {
 
 type UserScoreSnapshot @entity {
   id: ID!
-  timestamp: String!
+  timestamp: Int!
   block_date: String!
-  chain_id: String!
-  block_number: String!
+  chain_id: Int!
+  block_number: Int!
   user_address: String!
   pool_address: String!
-  total_value_locked_score: String!
+  total_value_locked_score: Int!
+  market_depth_score: Int
 }`
 DatabaseSchema.register({
   source,

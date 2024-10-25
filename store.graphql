@@ -10,11 +10,12 @@ type Balance @entity {
 
 type UserScoreSnapshot @entity {
   id: ID!
-  timestamp: String!
+  timestamp: Int!
   block_date: String!
-  chain_id: String!
-  block_number: String!
+  chain_id: Int!
+  block_number: Int!
   user_address: String!
   pool_address: String!
-  total_value_locked_score: String!
+  total_value_locked_score: Int!
+  market_depth_score: Int
 }
