@@ -94,17 +94,18 @@ MARKETS.forEach((market) => {
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
                     balance.lockedQuoteAmount = lockedQuoteAmount
-
-                await ctx.store.upsert(balance);
             } else {
-                ctx.eventLogger.emit('BALANCE WITHDRAW_TO', {
-                    severity: LogLevel.ERROR,
+                balance = new Balance({
+                    id: balanceId,
                     user: withdrawTo.data.user.Address?.bits,
-                    balance: balanceId,
-                    reason: 'No balance for user',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
                 });
             }
-
+            await ctx.store.upsert(balance);
         })
 
         .onLogOpenOrderEvent(async (open, ctx: any) => {
@@ -233,8 +234,8 @@ MARKETS.forEach((market) => {
 
                 if (!baseTokenPrice) {
                     baseTokenPrice = marketConfig.defaultBasePrice;
-                    ctx.eventLogger.emit('BaseTokenPriceError', {
-                        severity: LogLevel.ERROR,
+                    ctx.eventLogger.emit('Default price', {
+                        severity: LogLevel.INFO,
                         message: `Failed to load base token price for ${marketConfig.baseToken}. Using default price: ${marketConfig.defaultBasePrice}`,
                         token: marketConfig.baseTokenSymbol,
                         defaultPrice: marketConfig.defaultBasePrice.toString(),
@@ -243,8 +244,8 @@ MARKETS.forEach((market) => {
 
                 if (!quoteTokenPrice) {
                     quoteTokenPrice = marketConfig.defaultQuotePrice;
-                    ctx.eventLogger.emit('QuoteTokenPriceError', {
-                        severity: LogLevel.ERROR,
+                    ctx.eventLogger.emit('Default price', {
+                        severity: LogLevel.INFO,
                         message: `Failed to load quote token price for ${marketConfig.quoteToken}. Using default price: ${marketConfig.defaultQuotePrice}`,
                         token: marketConfig.quoteTokenSymbol,
                         defaultPrice: marketConfig.defaultQuotePrice.toString(),
