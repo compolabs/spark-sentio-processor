@@ -1,6 +1,6 @@
 import { SparkMarketProcessor } from "./types/fuel/SparkMarketProcessor.js";
 import { FuelNetwork } from "@sentio/sdk/fuel";
-import { BigDecimal, LogLevel } from "@sentio/sdk";
+import { BigDecimal, Counter, Gauge, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import marketsConfig from './marketsConfig.json';
 import { Balance, UserScoreSnapshot } from './schema/store.js';
@@ -15,13 +15,25 @@ export const getHash = (data: string) => {
     return crypto.createHash("sha256").update(data).digest("hex");
 };
 
+// const totalTVLGauge = Gauge.register("total_tvl", {
+//     sparse: true,
+//     aggregationConfig: {
+//         intervalInMinutes: [60],
+//     }
+// });
+const depositCounter = Counter.register("deposit");
+const withdrawCounter = Counter.register("withdraw");
+const withdrawToMarketCounter = Counter.register("withdrawToMarket");
+const openOrderCounter = Counter.register("openOrder");
+const cancelOrderCounter = Counter.register("cancelOrder");
+const tradeOrderCounter = Counter.register("tradeOrder");
 MARKETS.forEach((market) => {
     SparkMarketProcessor.bind({
         address: market,
         chainId: FuelNetwork.MAIN_NET
     })
         .onLogDepositEvent(async (deposit, ctx) => {
-
+            depositCounter.add(ctx, 1);
             const liquidBaseAmount = BigInt(deposit.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(deposit.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(deposit.data.account.locked.base.toString());
@@ -51,6 +63,7 @@ MARKETS.forEach((market) => {
 
         })
         .onLogWithdrawEvent(async (withdraw, ctx) => {
+            withdrawCounter.add(ctx, 1);
 
             const liquidBaseAmount = BigInt(withdraw.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(withdraw.data.account.liquid.quote.toString());
@@ -66,20 +79,22 @@ MARKETS.forEach((market) => {
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
                     balance.lockedQuoteAmount = lockedQuoteAmount
-
-                await ctx.store.upsert(balance);
             } else {
-                ctx.eventLogger.emit('BALANCE WITHDRAW', {
-                    severity: LogLevel.ERROR,
+                balance = new Balance({
+                    id: balanceId,
                     user: withdraw.data.user.Address?.bits,
-                    balance: balanceId,
-                    reason: 'No balance for user',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
                 });
             }
+            await ctx.store.upsert(balance);
 
         })
         .onLogWithdrawToMarketEvent(async (withdrawTo, ctx) => {
-
+            withdrawToMarketCounter.add(ctx, 1);
             const liquidBaseAmount = BigInt(withdrawTo.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(withdrawTo.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(withdrawTo.data.account.locked.base.toString());
@@ -109,6 +124,7 @@ MARKETS.forEach((market) => {
         })
 
         .onLogOpenOrderEvent(async (open, ctx: any) => {
+            openOrderCounter.add(ctx, 1);
 
             const liquidBaseAmount = BigInt(open.data.balance.liquid.base.toString());
             const liquidQuoteAmount = BigInt(open.data.balance.liquid.quote.toString());
@@ -124,19 +140,22 @@ MARKETS.forEach((market) => {
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
                     balance.lockedQuoteAmount = lockedQuoteAmount
-
-                await ctx.store.upsert(balance);
             } else {
-                ctx.eventLogger.emit('BALANCE OPEN', {
-                    severity: LogLevel.ERROR,
+                balance = new Balance({
+                    id: balanceId,
                     user: open.data.user.Address?.bits,
-                    balance: balanceId,
-                    reason: 'No balance for user',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
                 });
             }
+            await ctx.store.upsert(balance);
 
         })
         .onLogCancelOrderEvent(async (cancel, ctx: any) => {
+            cancelOrderCounter.add(ctx, 1);
 
             const liquidBaseAmount = BigInt(cancel.data.balance.liquid.base.toString());
             const liquidQuoteAmount = BigInt(cancel.data.balance.liquid.quote.toString());
@@ -152,19 +171,22 @@ MARKETS.forEach((market) => {
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
                     balance.lockedQuoteAmount = lockedQuoteAmount
-
-                await ctx.store.upsert(balance);
             } else {
-                ctx.eventLogger.emit('BALANCE CANCEL', {
-                    severity: LogLevel.ERROR,
+                balance = new Balance({
+                    id: balanceId,
                     user: cancel.data.user.Address?.bits,
-                    balance: balanceId,
-                    reason: 'No balance for user',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: liquidBaseAmount,
+                    liquidQuoteAmount: liquidQuoteAmount,
+                    lockedBaseAmount: lockedBaseAmount,
+                    lockedQuoteAmount: lockedQuoteAmount
                 });
             }
+            await ctx.store.upsert(balance);
 
         })
         .onLogTradeOrderEvent(async (trade, ctx: any) => {
+            tradeOrderCounter.add(ctx, 1);
 
             const seller_liquidBaseAmount = BigInt(trade.data.s_balance.liquid.base.toString());
             const seller_liquidQuoteAmount = BigInt(trade.data.s_balance.liquid.quote.toString());
@@ -187,36 +209,43 @@ MARKETS.forEach((market) => {
                     seller_balance.liquidQuoteAmount = seller_liquidQuoteAmount,
                     seller_balance.lockedBaseAmount = seller_lockedBaseAmount,
                     seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount
-
-                await ctx.store.upsert(seller_balance);
             } else {
-                ctx.eventLogger.emit('BALANCE TRADE', {
-                    severity: LogLevel.ERROR,
+                seller_balance = new Balance({
+                    id: seller_balanceId,
                     user: trade.data.order_seller.Address?.bits,
-                    balance: seller_balanceId,
-                    reason: 'No balance for seller',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: seller_liquidBaseAmount,
+                    liquidQuoteAmount: seller_liquidQuoteAmount,
+                    lockedBaseAmount: seller_lockedBaseAmount,
+                    lockedQuoteAmount: seller_lockedQuoteAmount
                 });
             }
+            await ctx.store.upsert(seller_balance);
 
             if (buyer_balance) {
                 buyer_balance.liquidBaseAmount = buyer_liquidBaseAmount,
                     buyer_balance.liquidQuoteAmount = buyer_liquidQuoteAmount,
                     buyer_balance.lockedBaseAmount = buyer_lockedBaseAmount,
                     buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount
-
-                await ctx.store.upsert(buyer_balance);
             } else {
-                ctx.eventLogger.emit('BALANCE TRADE', {
-                    severity: LogLevel.ERROR,
+                buyer_balance = new Balance({
+                    id: buyer_balanceId,
                     user: trade.data.order_buyer.Address?.bits,
-                    balance: buyer_balanceId,
-                    reason: 'No balance for buyer',
+                    market: ctx.contractAddress,
+                    liquidBaseAmount: buyer_liquidBaseAmount,
+                    liquidQuoteAmount: buyer_liquidQuoteAmount,
+                    lockedBaseAmount: buyer_lockedBaseAmount,
+                    lockedQuoteAmount: buyer_lockedQuoteAmount
                 });
             }
+            await ctx.store.upsert(buyer_balance);
         })
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
             const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
+            let TVL = BigDecimal(0);
+            let quoteTVL = BigDecimal(0);
+            let baseTVL = BigDecimal(0);
 
             for (const balance of filteredBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
@@ -252,16 +281,23 @@ MARKETS.forEach((market) => {
                     });
                 }
 
-                const baseTVL = balance.liquidBaseAmount + balance.lockedBaseAmount;
-                const quoteTVL = balance.liquidQuoteAmount + balance.lockedQuoteAmount;
+                const baseBalanceAmount = balance.liquidBaseAmount + balance.lockedBaseAmount;
+                const quoteBalanceAmount = balance.liquidQuoteAmount + balance.lockedQuoteAmount;
 
-                const baseTVLBigDecimal = BigDecimal(baseTVL.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
-                const quoteTVLBigDecimal = BigDecimal(quoteTVL.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+                const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
+                const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
 
-                const totalBaseTVL = baseTVLBigDecimal.multipliedBy(baseTokenPrice);
-                const totalQuoteTVL = quoteTVLBigDecimal.multipliedBy(quoteTokenPrice);
+                const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
+                const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
+                const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
 
-                const tvl = totalBaseTVL.plus(totalQuoteTVL).toString();
+                TVL = TVL.plus(balanceTVL);
+                quoteTVL = quoteTVL.plus(balanceQuoteTVL);
+                baseTVL = baseTVL.plus(balanceBaseTVL);
+
+                ctx.meter.Gauge("total_tvl").record(TVL)
+                ctx.meter.Gauge("total_quote_tvl").record(quoteTVL)
+                ctx.meter.Gauge("total_base_tvl").record(baseTVL)
 
                 const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${ctx.transaction}`);
                 const snapshot = new UserScoreSnapshot({
@@ -272,26 +308,10 @@ MARKETS.forEach((market) => {
                     block_number: Number(block.height),
                     user_address: balance.user,
                     pool_address: ctx.contractAddress,
-                    total_value_locked_score: Number(tvl),
+                    total_value_locked_score: Number(balanceTVL),
                     market_depth_score: undefined
                 });
-
                 await ctx.store.upsert(snapshot);
-
-                ctx.eventLogger.emit('Snapshot', {
-                    message: `Snapshot for user ${balance.user}: ${new Date().toISOString()}`,
-                    severity: LogLevel.INFO,
-                    market: marketConfig.name,
-                    timestamp: new Date().toISOString(),
-                    block_date: ctx.timestamp.toString(),
-                    block_number: block.height.toString(),
-                    user_address: balance.user,
-                    pool_address: ctx.contractAddress,
-                    total_value_locked_score: tvl,
-                    baseTokenPrice: baseTokenPrice.toString(),
-                    quoteTokenPrice: quoteTokenPrice.toString()
-                });
-
             }
         }, 60);
 })

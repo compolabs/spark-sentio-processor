@@ -32,7 +32,7 @@
     "quoteTokenSymbol": "KMLA",
     "baseDecimal": "9",
     "quoteDecimal": "9",
-    "defaultBasePrice": 2600,
+    "defaultBasePrice": 1,
     "defaultQuotePrice": 1
   }
 }
