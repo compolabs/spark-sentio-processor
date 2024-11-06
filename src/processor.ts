@@ -15,18 +15,15 @@ export const getHash = (data: string) => {
     return crypto.createHash("sha256").update(data).digest("hex");
 };
 
-// const totalTVLGauge = Gauge.register("total_tvl", {
-//     sparse: true,
-//     aggregationConfig: {
-//         intervalInMinutes: [60],
-//     }
-// });
 const depositCounter = Counter.register("deposit");
 const withdrawCounter = Counter.register("withdraw");
 const withdrawToMarketCounter = Counter.register("withdrawToMarket");
 const openOrderCounter = Counter.register("openOrder");
 const cancelOrderCounter = Counter.register("cancelOrder");
 const tradeOrderCounter = Counter.register("tradeOrder");
+const shortCounter = Counter.register("shorts");
+const longCounter = Counter.register("longs");
+
 MARKETS.forEach((market) => {
     SparkMarketProcessor.bind({
         address: market,
@@ -125,6 +122,7 @@ MARKETS.forEach((market) => {
 
         .onLogOpenOrderEvent(async (open, ctx: any) => {
             openOrderCounter.add(ctx, 1);
+            open.data.order_type === "Buy" ? longCounter.add(ctx, 1) : shortCounter.add(ctx, 1);
 
             const liquidBaseAmount = BigInt(open.data.balance.liquid.base.toString());
             const liquidQuoteAmount = BigInt(open.data.balance.liquid.quote.toString());
@@ -244,8 +242,6 @@ MARKETS.forEach((market) => {
             const balances = await ctx.store.list(Balance, []);
             const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
             let TVL = BigDecimal(0);
-            let quoteTVL = BigDecimal(0);
-            let baseTVL = BigDecimal(0);
 
             for (const balance of filteredBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
@@ -262,23 +258,10 @@ MARKETS.forEach((market) => {
                 let quoteTokenPrice = await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp));
 
                 if (!baseTokenPrice) {
-                    baseTokenPrice = marketConfig.defaultBasePrice;
-                    ctx.eventLogger.emit('Default price', {
-                        severity: LogLevel.INFO,
-                        message: `Failed to load base token price for ${marketConfig.baseToken}. Using default price: ${marketConfig.defaultBasePrice}`,
-                        token: marketConfig.baseTokenSymbol,
-                        defaultPrice: marketConfig.defaultBasePrice.toString(),
-                    });
+                    baseTokenPrice = marketConfig.defaultBasePrice
                 }
-
                 if (!quoteTokenPrice) {
-                    quoteTokenPrice = marketConfig.defaultQuotePrice;
-                    ctx.eventLogger.emit('Default price', {
-                        severity: LogLevel.INFO,
-                        message: `Failed to load quote token price for ${marketConfig.quoteToken}. Using default price: ${marketConfig.defaultQuotePrice}`,
-                        token: marketConfig.quoteTokenSymbol,
-                        defaultPrice: marketConfig.defaultQuotePrice.toString(),
-                    });
+                    quoteTokenPrice = marketConfig.defaultQuotePrice
                 }
 
                 const baseBalanceAmount = balance.liquidBaseAmount + balance.lockedBaseAmount;
@@ -292,12 +275,6 @@ MARKETS.forEach((market) => {
                 const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
 
                 TVL = TVL.plus(balanceTVL);
-                quoteTVL = quoteTVL.plus(balanceQuoteTVL);
-                baseTVL = baseTVL.plus(balanceBaseTVL);
-
-                ctx.meter.Gauge("total_tvl").record(TVL)
-                ctx.meter.Gauge("total_quote_tvl").record(quoteTVL)
-                ctx.meter.Gauge("total_base_tvl").record(baseTVL)
 
                 const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${ctx.transaction}`);
                 const snapshot = new UserScoreSnapshot({
@@ -313,5 +290,69 @@ MARKETS.forEach((market) => {
                 });
                 await ctx.store.upsert(snapshot);
             }
-        }, 60);
+        }, 60)
+        .onTimeInterval(async (block, ctx) => {
+            const balances = await ctx.store.list(Balance, []);
+            const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
+            let TVL = BigDecimal(0);
+            let quoteTVL = BigDecimal(0);
+            let baseTVL = BigDecimal(0);
+
+            let lockedTVL = BigDecimal(0);
+            let liquidTVL = BigDecimal(0);
+
+            for (const balance of filteredBalances) {
+                const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
+
+                if (!marketConfig) {
+                    ctx.eventLogger.emit('MarketConfigNotFound', {
+                        severity: LogLevel.ERROR,
+                        message: `Market config not found for market address ${balance.market}`,
+                    });
+                    continue;
+                }
+
+                let baseTokenPrice = await getPriceBySymbol(marketConfig.baseTokenSymbol, new Date(ctx.timestamp));
+                let quoteTokenPrice = await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp));
+                if (!baseTokenPrice) {
+                    baseTokenPrice = marketConfig.defaultBasePrice
+                }
+                if (!quoteTokenPrice) {
+                    quoteTokenPrice = marketConfig.defaultQuotePrice
+                }
+
+                const baseBalanceAmount = balance.liquidBaseAmount + balance.lockedBaseAmount;
+                const quoteBalanceAmount = balance.liquidQuoteAmount + balance.lockedQuoteAmount;
+
+                const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
+                const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+
+
+                const lockedBaseAmount = BigDecimal(balance.lockedBaseAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
+                const lockedQuoteAmount = BigDecimal(balance.lockedQuoteAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+
+                const liquidBaseAmount = BigDecimal(balance.liquidBaseAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
+                const liquidQuoteAmount = BigDecimal(balance.liquidQuoteAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+
+                const balanceLockedTVL = lockedBaseAmount.multipliedBy(baseTokenPrice).plus(lockedQuoteAmount.multipliedBy(quoteTokenPrice));
+                const balanceLiquidTVL = liquidBaseAmount.multipliedBy(baseTokenPrice).plus(liquidQuoteAmount.multipliedBy(quoteTokenPrice));
+
+                const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
+                const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
+                const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
+
+                TVL = TVL.plus(balanceTVL);
+                quoteTVL = quoteTVL.plus(balanceQuoteTVL);
+                baseTVL = baseTVL.plus(balanceBaseTVL);
+
+                lockedTVL = lockedTVL.plus(balanceLockedTVL);
+                liquidTVL = liquidTVL.plus(balanceLiquidTVL);
+
+                ctx.meter.Gauge("total_tvl").record(TVL)
+                ctx.meter.Gauge("total_quote_tvl").record(quoteTVL)
+                ctx.meter.Gauge("total_base_tvl").record(baseTVL)
+                ctx.meter.Gauge("total_locked_tvl").record(lockedTVL)
+                ctx.meter.Gauge("total_liquid_tvl").record(liquidTVL)
+            }
+        }, 1)
 })
