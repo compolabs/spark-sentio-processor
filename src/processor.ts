@@ -276,7 +276,7 @@ MARKETS.forEach((market) => {
 
                 TVL = TVL.plus(balanceTVL);
 
-                const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${ctx.transaction}`);
+                const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${ctx.transaction?.blockNumber}`);
                 const snapshot = new UserScoreSnapshot({
                     id: snapshotId,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
@@ -300,6 +300,10 @@ MARKETS.forEach((market) => {
 
             let lockedTVL = BigDecimal(0);
             let liquidTVL = BigDecimal(0);
+
+            let baseAmountOnContract = BigDecimal(0);
+            let baseAmountOnBalances = BigDecimal(0);
+            let baseAmountOnOrders = BigDecimal(0);
 
             for (const balance of filteredBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
@@ -348,11 +352,19 @@ MARKETS.forEach((market) => {
                 lockedTVL = lockedTVL.plus(balanceLockedTVL);
                 liquidTVL = liquidTVL.plus(balanceLiquidTVL);
 
+                baseAmountOnContract = baseAmountOnContract.plus(baseBalanceAmountBigDecimal)
+                baseAmountOnBalances = baseAmountOnBalances.plus(liquidBaseAmount)
+                baseAmountOnOrders = baseAmountOnOrders.plus(lockedBaseAmount)
+
                 ctx.meter.Gauge("total_tvl").record(TVL)
                 ctx.meter.Gauge("total_quote_tvl").record(quoteTVL)
                 ctx.meter.Gauge("total_base_tvl").record(baseTVL)
                 ctx.meter.Gauge("total_locked_tvl").record(lockedTVL)
                 ctx.meter.Gauge("total_liquid_tvl").record(liquidTVL)
+
+                ctx.meter.Gauge("base_amount_on_contract").record(baseAmountOnContract)
+                ctx.meter.Gauge("base_amount_on_balances").record(baseAmountOnBalances)
+                ctx.meter.Gauge("base_amount_on_orders").record(baseAmountOnOrders)
             }
         }, 1)
 })
