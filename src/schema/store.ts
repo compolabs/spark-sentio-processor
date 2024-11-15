@@ -93,6 +93,63 @@ export class UserScoreSnapshot extends AbstractEntity  {
   constructor(data: Partial<UserScoreSnapshot>) {super()}
 }
 
+@Entity("Pools")
+export class Pools extends AbstractEntity  {
+
+	@Required
+	@Column("ID")
+	id: ID
+
+	@Required
+	@Column("Int")
+	chain_id: Int
+
+	@Required
+	@Column("Int")
+	creation_block_number: Int
+
+	@Required
+	@Column("Int")
+	timestamp: Int
+
+	@Required
+	@Column("String")
+	pool_address: String
+
+	@Required
+	@Column("String")
+	lp_token_address: String
+
+	@Required
+	@Column("String")
+	lp_token_symbol: String
+
+	@Required
+	@Column("String")
+	token_address: String
+
+	@Required
+	@Column("String")
+	token_symbol: String
+
+	@Required
+	@Column("String")
+	token_decimals: String
+
+	@Required
+	@Column("Int")
+	token_index: Int
+
+	@Required
+	@Column("Float")
+	fee_rate: Float
+
+	@Required
+	@Column("String")
+	dex_type: String
+  constructor(data: Partial<Pools>) {super()}
+}
+
 
 const source = `type Balance @entity {
   id: ID!
@@ -116,11 +173,29 @@ type UserScoreSnapshot @entity {
   total_value_locked_score: Int!
   market_depth_score: Int
   tradeVolume: Float!
-}`
+}
+
+type Pools @entity {
+  id: ID!
+  chain_id: Int!
+  creation_block_number: Int!
+  timestamp: Int!
+  pool_address: String!
+  lp_token_address: String!
+  lp_token_symbol: String!
+  token_address: String!
+  token_symbol: String!
+  token_decimals: String!
+  token_index: Int!
+  fee_rate: Float!
+  dex_type: String!
+}
+`
 DatabaseSchema.register({
   source,
   entities: {
     "Balance": Balance,
-		"UserScoreSnapshot": UserScoreSnapshot
+		"UserScoreSnapshot": UserScoreSnapshot,
+		"Pools": Pools
   }
 })

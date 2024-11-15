@@ -21,3 +21,19 @@ type UserScoreSnapshot @entity {
   market_depth_score: Int
   tradeVolume: Float!
 }
+
+type Pools @entity {
+  id: ID!
+  chain_id: Int!
+  creation_block_number: Int!
+  timestamp: Int!
+  pool_address: String!
+  lp_token_address: String!
+  lp_token_symbol: String!
+  token_address: String!
+  token_symbol: String!
+  token_decimals: String!
+  token_index: Int!
+  fee_rate: Float!
+  dex_type: String!
+}
