@@ -53,7 +53,8 @@ MARKETS.forEach((market) => {
                     liquidBaseAmount: liquidBaseAmount,
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    lockedQuoteAmount: lockedQuoteAmount,
+                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -84,7 +85,8 @@ MARKETS.forEach((market) => {
                     liquidBaseAmount: liquidBaseAmount,
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    lockedQuoteAmount: lockedQuoteAmount,
+                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -114,7 +116,8 @@ MARKETS.forEach((market) => {
                     liquidBaseAmount: liquidBaseAmount,
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    lockedQuoteAmount: lockedQuoteAmount,
+                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -146,7 +149,8 @@ MARKETS.forEach((market) => {
                     liquidBaseAmount: liquidBaseAmount,
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    lockedQuoteAmount: lockedQuoteAmount,
+                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -177,7 +181,8 @@ MARKETS.forEach((market) => {
                     liquidBaseAmount: liquidBaseAmount,
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount
+                    lockedQuoteAmount: lockedQuoteAmount,
+                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -206,7 +211,8 @@ MARKETS.forEach((market) => {
                 seller_balance.liquidBaseAmount = seller_liquidBaseAmount,
                     seller_balance.liquidQuoteAmount = seller_liquidQuoteAmount,
                     seller_balance.lockedBaseAmount = seller_lockedBaseAmount,
-                    seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount
+                    seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount,
+                    seller_balance.tradeVolume = BigDecimal(seller_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9))))
             } else {
                 seller_balance = new Balance({
                     id: seller_balanceId,
@@ -215,7 +221,8 @@ MARKETS.forEach((market) => {
                     liquidBaseAmount: seller_liquidBaseAmount,
                     liquidQuoteAmount: seller_liquidQuoteAmount,
                     lockedBaseAmount: seller_lockedBaseAmount,
-                    lockedQuoteAmount: seller_lockedQuoteAmount
+                    lockedQuoteAmount: seller_lockedQuoteAmount,
+                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(seller_balance);
@@ -224,7 +231,8 @@ MARKETS.forEach((market) => {
                 buyer_balance.liquidBaseAmount = buyer_liquidBaseAmount,
                     buyer_balance.liquidQuoteAmount = buyer_liquidQuoteAmount,
                     buyer_balance.lockedBaseAmount = buyer_lockedBaseAmount,
-                    buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount
+                    buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount,
+                    buyer_balance.tradeVolume = BigDecimal(buyer_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9))))
             } else {
                 buyer_balance = new Balance({
                     id: buyer_balanceId,
@@ -233,7 +241,8 @@ MARKETS.forEach((market) => {
                     liquidBaseAmount: buyer_liquidBaseAmount,
                     liquidQuoteAmount: buyer_liquidQuoteAmount,
                     lockedBaseAmount: buyer_lockedBaseAmount,
-                    lockedQuoteAmount: buyer_lockedQuoteAmount
+                    lockedQuoteAmount: buyer_lockedQuoteAmount,
+                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(buyer_balance);
@@ -276,7 +285,7 @@ MARKETS.forEach((market) => {
 
                 TVL = TVL.plus(balanceTVL);
 
-                const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${ctx.transaction?.blockNumber}`);
+                const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`);
                 const snapshot = new UserScoreSnapshot({
                     id: snapshotId,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
@@ -286,11 +295,12 @@ MARKETS.forEach((market) => {
                     user_address: balance.user,
                     pool_address: ctx.contractAddress,
                     total_value_locked_score: Number(balanceTVL),
-                    market_depth_score: undefined
+                    market_depth_score: undefined,
+                    tradeVolume: balance.tradeVolume
                 });
                 await ctx.store.upsert(snapshot);
             }
-        }, 60)
+        }, 60, 60)
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
             const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
@@ -366,5 +376,5 @@ MARKETS.forEach((market) => {
                 ctx.meter.Gauge("base_amount_on_balances").record(baseAmountOnBalances)
                 ctx.meter.Gauge("base_amount_on_orders").record(baseAmountOnOrders)
             }
-        }, 1)
+        }, 1, 1)
 })

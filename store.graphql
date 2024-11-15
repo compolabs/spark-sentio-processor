@@ -6,6 +6,7 @@ type Balance @entity {
   liquidQuoteAmount: BigInt!
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
+  tradeVolume: Float!
 }
 
 type UserScoreSnapshot @entity {
@@ -18,4 +19,5 @@ type UserScoreSnapshot @entity {
   pool_address: String!
   total_value_locked_score: Int!
   market_depth_score: Int
+  tradeVolume: Float!
 }
