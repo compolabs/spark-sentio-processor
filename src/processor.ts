@@ -303,17 +303,16 @@ MARKETS.forEach((market) => {
                 const pool = new Pools({
                     id: snapshotId,
                     chain_id: Number(ctx.chainId),
-                    creation_block_number: ,
+                    creation_block_number: 5813594,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
                     pool_address: ctx.contractAddress,
-                    lp_token_address: ,
-                    lp_token_symbol: ,
-                    token_address: ,
-                    token_symbol: ,
-                    token_decimals: ,
-                    token_index: ,
-                    fee_rate: ,
-                    dex_type: ,
+                    lp_token_address: "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
+                    lp_token_symbol: "ETH",
+                    token_address: "0x286c479da40dc953bddc3bb4c453b608bba2e0ac483b077bd475174115395e6b",
+                    token_symbol: "USDC",
+                    token_decimals: "6",
+                    token_index: 0,
+                    dex_type: "Orderbook",
                 });
                 await ctx.store.upsert(pool);
 
