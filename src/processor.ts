@@ -301,7 +301,7 @@ MARKETS.forEach((market) => {
                 await ctx.store.upsert(snapshot);
 
                 const pool = new Pools({
-                    id: snapshotId,
+                    id: getHash(ctx.chainId),
                     chain_id: Number(ctx.chainId),
                     creation_block_number: 5813594,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
@@ -312,6 +312,7 @@ MARKETS.forEach((market) => {
                     token_symbol: "USDC",
                     token_decimals: "6",
                     token_index: 0,
+                    fee_rate: 0.023,
                     dex_type: "Orderbook",
                 });
                 await ctx.store.upsert(pool);
