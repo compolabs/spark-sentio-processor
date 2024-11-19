@@ -299,9 +299,8 @@ MARKETS.forEach((market) => {
                     tradeVolume: balance.tradeVolume
                 });
                 await ctx.store.upsert(snapshot);
-
                 const pool = new Pools({
-                    id: getHash(ctx.chainId),
+                    id: getHash(block.height.toString()),
                     chain_id: Number(ctx.chainId),
                     creation_block_number: 5813594,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
