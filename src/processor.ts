@@ -3,7 +3,7 @@ import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import marketsConfig from './marketsConfig.json';
-import { Balance, Pools, UserScoreSnapshot } from './schema/store.js';
+import { Balance, Pools, TradeVolume, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { MARKETS } from "./markets.js";
 // import { GLOBAL_CONFIG } from "@sentio/runtime"
@@ -287,6 +287,13 @@ MARKETS.forEach((market) => {
                 TVL = TVL.plus(balanceTVL);
                 tradeVolume = tradeVolume.plus(balance.tradeVolume);
 
+                const trade = new TradeVolume({
+                    id: block.height.toString(),
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                    tradeVolume: tradeVolume.toNumber()
+                });
+                await ctx.store.upsert(trade);
+
                 const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`);
                 const snapshot = new UserScoreSnapshot({
                     id: snapshotId,
@@ -303,7 +310,7 @@ MARKETS.forEach((market) => {
                 await ctx.store.upsert(snapshot);
                 
                 const pool = new Pools({
-                    id: getHash(block.height.toString()),
+                    id: block.height.toString(),
                     chain_id: Number(ctx.chainId),
                     creation_block_number: 5813594,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),

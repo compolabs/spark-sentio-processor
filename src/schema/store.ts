@@ -49,6 +49,23 @@ export class Balance extends AbstractEntity  {
   constructor(data: Partial<Balance>) {super()}
 }
 
+@Entity("TradeVolume")
+export class TradeVolume extends AbstractEntity  {
+
+	@Required
+	@Column("ID")
+	id: ID
+
+	@Required
+	@Column("Int")
+	timestamp: Int
+
+	@Required
+	@Column("Float")
+	tradeVolume: Float
+  constructor(data: Partial<TradeVolume>) {super()}
+}
+
 @Entity("UserScoreSnapshot")
 export class UserScoreSnapshot extends AbstractEntity  {
 
@@ -161,6 +178,11 @@ const source = `type Balance @entity {
   lockedQuoteAmount: BigInt!
   tradeVolume: Float!
 }
+type TradeVolume @entity {
+  id: ID!
+  timestamp: Int!
+  tradeVolume: Float!
+}
 
 type UserScoreSnapshot @entity {
   id: ID!
@@ -195,6 +217,7 @@ DatabaseSchema.register({
   source,
   entities: {
     "Balance": Balance,
+		"TradeVolume": TradeVolume,
 		"UserScoreSnapshot": UserScoreSnapshot,
 		"Pools": Pools
   }

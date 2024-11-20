@@ -8,6 +8,11 @@ type Balance @entity {
   lockedQuoteAmount: BigInt!
   tradeVolume: Float!
 }
+type TradeVolume @entity {
+  id: ID!
+  timestamp: Int!
+  tradeVolume: Float!
+}
 
 type UserScoreSnapshot @entity {
   id: ID!
