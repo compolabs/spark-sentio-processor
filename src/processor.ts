@@ -1,6 +1,6 @@
 import { SparkMarketProcessor } from "./types/fuel/SparkMarketProcessor.js";
 import { FuelNetwork } from "@sentio/sdk/fuel";
-import { BigDecimal, Counter, Gauge, LogLevel } from "@sentio/sdk";
+import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import marketsConfig from './marketsConfig.json';
 import { Balance, Pools, UserScoreSnapshot } from './schema/store.js';
@@ -251,6 +251,7 @@ MARKETS.forEach((market) => {
             const balances = await ctx.store.list(Balance, []);
             const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
             let TVL = BigDecimal(0);
+            let tradeVolume = BigDecimal(0);
 
             for (const balance of filteredBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
@@ -284,6 +285,7 @@ MARKETS.forEach((market) => {
                 const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
 
                 TVL = TVL.plus(balanceTVL);
+                tradeVolume = tradeVolume.plus(balance.tradeVolume);
 
                 const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`);
                 const snapshot = new UserScoreSnapshot({
@@ -299,6 +301,7 @@ MARKETS.forEach((market) => {
                     tradeVolume: balance.tradeVolume
                 });
                 await ctx.store.upsert(snapshot);
+                
                 const pool = new Pools({
                     id: getHash(block.height.toString()),
                     chain_id: Number(ctx.chainId),
@@ -316,6 +319,7 @@ MARKETS.forEach((market) => {
                 });
                 await ctx.store.upsert(pool);
 
+                ctx.meter.Gauge("trade_volume").record(tradeVolume)
             }
         }, 60, 60)
         .onTimeInterval(async (block, ctx) => {

@@ -81,8 +81,8 @@ export class UserScoreSnapshot extends AbstractEntity  {
 	pool_address: String
 
 	@Required
-	@Column("Int")
-	total_value_locked_score: Int
+	@Column("Float")
+	total_value_locked_score: Float
 
 	@Column("Int")
 	market_depth_score?: Int
@@ -170,7 +170,7 @@ type UserScoreSnapshot @entity {
   block_number: Int!
   user_address: String!
   pool_address: String!
-  total_value_locked_score: Int!
+  total_value_locked_score: Float!
   market_depth_score: Int
   tradeVolume: Float!
 }
