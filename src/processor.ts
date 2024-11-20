@@ -287,16 +287,15 @@ MARKETS.forEach((market) => {
                 TVL = TVL.plus(balanceTVL);
                 tradeVolume = tradeVolume.plus(balance.tradeVolume);
 
-                const trade = new TradeVolume({
+                const volume = new TradeVolume({
                     id: block.height.toString(),
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
                     tradeVolume: tradeVolume.toNumber()
                 });
-                await ctx.store.upsert(trade);
+                await ctx.store.upsert(volume);
 
-                const snapshotId = getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`);
                 const snapshot = new UserScoreSnapshot({
-                    id: snapshotId,
+                    id: getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`),
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
                     block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
                     chain_id: Number(ctx.chainId),
@@ -308,9 +307,9 @@ MARKETS.forEach((market) => {
                     tradeVolume: balance.tradeVolume
                 });
                 await ctx.store.upsert(snapshot);
-                
+
                 const pool = new Pools({
-                    id: block.height.toString(),
+                    id: undefined,
                     chain_id: Number(ctx.chainId),
                     creation_block_number: 5813594,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
