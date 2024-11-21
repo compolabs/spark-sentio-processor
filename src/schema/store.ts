@@ -66,6 +66,23 @@ export class TradeVolume extends AbstractEntity  {
   constructor(data: Partial<TradeVolume>) {super()}
 }
 
+@Entity("DailyVolume")
+export class DailyVolume extends AbstractEntity  {
+
+	@Required
+	@Column("ID")
+	id: ID
+
+	@Required
+	@Column("Int")
+	timestamp: Int
+
+	@Required
+	@Column("Float")
+	tradeVolume: Float
+  constructor(data: Partial<DailyVolume>) {super()}
+}
+
 @Entity("UserScoreSnapshot")
 export class UserScoreSnapshot extends AbstractEntity  {
 
@@ -184,6 +201,12 @@ type TradeVolume @entity {
   tradeVolume: Float!
 }
 
+type DailyVolume @entity {
+  id: ID!
+  timestamp: Int!
+  tradeVolume: Float!
+}
+
 type UserScoreSnapshot @entity {
   id: ID!
   timestamp: Int!
@@ -218,6 +241,7 @@ DatabaseSchema.register({
   entities: {
     "Balance": Balance,
 		"TradeVolume": TradeVolume,
+		"DailyVolume": DailyVolume,
 		"UserScoreSnapshot": UserScoreSnapshot,
 		"Pools": Pools
   }

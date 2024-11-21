@@ -3,7 +3,7 @@ import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import marketsConfig from './marketsConfig.json';
-import { Balance, Pools, TradeVolume, UserScoreSnapshot } from './schema/store.js';
+import { Balance, DailyVolume, Pools, TradeVolume, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { MARKETS } from "./markets.js";
 // import { GLOBAL_CONFIG } from "@sentio/runtime"
@@ -246,12 +246,19 @@ MARKETS.forEach((market) => {
                 });
             }
             await ctx.store.upsert(buyer_balance);
+
+            const tradeVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9)));
+            const tradeEvent = new TradeVolume({
+                id: getHash(`${ctx.timestamp}-${trade.data.base_buy_order_id}-${trade.data.base_sell_order_id}-${trade.data.trade_price}-${trade.data.trade_size}-${ctx.contractAddress}`),
+                timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                tradeVolume: tradeVolume.toNumber()
+            });
+            await ctx.store.upsert(tradeEvent);
         })
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
             const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
             let TVL = BigDecimal(0);
-            let tradeVolume = BigDecimal(0);
 
             for (const balance of filteredBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
@@ -285,14 +292,6 @@ MARKETS.forEach((market) => {
                 const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
 
                 TVL = TVL.plus(balanceTVL);
-                tradeVolume = tradeVolume.plus(balance.tradeVolume);
-
-                const volume = new TradeVolume({
-                    id: block.height.toString(),
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-                    tradeVolume: tradeVolume.toNumber()
-                });
-                await ctx.store.upsert(volume);
 
                 const snapshot = new UserScoreSnapshot({
                     id: getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`),
@@ -309,7 +308,7 @@ MARKETS.forEach((market) => {
                 await ctx.store.upsert(snapshot);
 
                 const pool = new Pools({
-                    id: undefined,
+                    id: ctx.contractAddress,
                     chain_id: Number(ctx.chainId),
                     creation_block_number: 5813594,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
@@ -324,8 +323,6 @@ MARKETS.forEach((market) => {
                     dex_type: "Orderbook",
                 });
                 await ctx.store.upsert(pool);
-
-                ctx.meter.Gauge("trade_volume").record(tradeVolume)
             }
         }, 60, 60)
         .onTimeInterval(async (block, ctx) => {
@@ -341,6 +338,26 @@ MARKETS.forEach((market) => {
             let baseAmountOnContract = BigDecimal(0);
             let baseAmountOnBalances = BigDecimal(0);
             let baseAmountOnOrders = BigDecimal(0);
+
+            const currentTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+            const oneDayAgoTimestamp = currentTimestamp - 86400;
+            const allTradeVolumes = await ctx.store.list(TradeVolume, []);
+
+            const recentTrades = allTradeVolumes.filter(
+                (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
+            );
+
+            let dailyTradeVolume = BigDecimal(0);
+            for (const trade of recentTrades) {
+                dailyTradeVolume = dailyTradeVolume.plus(BigDecimal(trade.tradeVolume.toString()));
+            }
+            const dailyVolume = new DailyVolume({
+                id: ctx.block?.id,
+                timestamp: currentTimestamp,
+                tradeVolume: dailyTradeVolume.toNumber(),
+            });
+
+            await ctx.store.upsert(dailyVolume);
 
             for (const balance of filteredBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
