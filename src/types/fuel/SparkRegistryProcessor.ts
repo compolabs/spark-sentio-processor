@@ -8,7 +8,7 @@ import {Option,Enum,Vec} from './common.js'
 import {MarketRegistryErrorInput,MarketRegistryErrorOutput,AccessErrorInput,AccessErrorOutput,StateInput,StateOutput,IdentityInput,IdentityOutput,InitializationErrorInput,InitializationErrorOutput,MarketRegisterEventInput,MarketRegisterEventOutput,MarketUnregisterEventInput,MarketUnregisterEventOutput,AddressInput,AddressOutput,AssetIdInput,AssetIdOutput,ContractIdInput,ContractIdOutput,OwnershipSetInput,OwnershipSetOutput,OwnershipTransferredInput,OwnershipTransferredOutput, SparkRegistry} from './SparkRegistry.js'
 
 import type { BigNumberish, BN } from 'fuels';
-import type { BytesLike, Bytes } from 'fuels';
+import type { BytesLike, Bytes, StdString, StrSlice, RawSlice, B256Address, ChecksumAddress, Bech32Address } from 'fuels';
 
 
 namespace SparkRegistryNS {

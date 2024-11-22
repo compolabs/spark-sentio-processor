@@ -42,15 +42,11 @@ export class Balance extends AbstractEntity  {
 	@Required
 	@Column("BigInt")
 	lockedQuoteAmount: BigInt
-
-	@Required
-	@Column("Float")
-	tradeVolume: Float
   constructor(data: Partial<Balance>) {super()}
 }
 
-@Entity("TradeVolume")
-export class TradeVolume extends AbstractEntity  {
+@Entity("TotalVolume")
+export class TotalVolume extends AbstractEntity  {
 
 	@Required
 	@Column("ID")
@@ -62,8 +58,25 @@ export class TradeVolume extends AbstractEntity  {
 
 	@Required
 	@Column("Float")
-	tradeVolume: Float
-  constructor(data: Partial<TradeVolume>) {super()}
+	volume: Float
+  constructor(data: Partial<TotalVolume>) {super()}
+}
+
+@Entity("TradeEvent")
+export class TradeEvent extends AbstractEntity  {
+
+	@Required
+	@Column("ID")
+	id: ID
+
+	@Required
+	@Column("Int")
+	timestamp: Int
+
+	@Required
+	@Column("Float")
+	volume: Float
+  constructor(data: Partial<TradeEvent>) {super()}
 }
 
 @Entity("DailyVolume")
@@ -79,7 +92,7 @@ export class DailyVolume extends AbstractEntity  {
 
 	@Required
 	@Column("Float")
-	tradeVolume: Float
+	volume: Float
   constructor(data: Partial<DailyVolume>) {super()}
 }
 
@@ -120,10 +133,6 @@ export class UserScoreSnapshot extends AbstractEntity  {
 
 	@Column("Int")
 	market_depth_score?: Int
-
-	@Required
-	@Column("Float")
-	tradeVolume: Float
   constructor(data: Partial<UserScoreSnapshot>) {super()}
 }
 
@@ -193,18 +202,24 @@ const source = `type Balance @entity {
   liquidQuoteAmount: BigInt!
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
-  tradeVolume: Float!
 }
-type TradeVolume @entity {
+
+type TotalVolume @entity {
   id: ID!
   timestamp: Int!
-  tradeVolume: Float!
+  volume: Float!
+}
+
+type TradeEvent @entity {
+  id: ID!
+  timestamp: Int!
+  volume: Float!
 }
 
 type DailyVolume @entity {
   id: ID!
   timestamp: Int!
-  tradeVolume: Float!
+  volume: Float!
 }
 
 type UserScoreSnapshot @entity {
@@ -217,7 +232,6 @@ type UserScoreSnapshot @entity {
   pool_address: String!
   total_value_locked_score: Float!
   market_depth_score: Int
-  tradeVolume: Float!
 }
 
 type Pools @entity {
@@ -240,7 +254,8 @@ DatabaseSchema.register({
   source,
   entities: {
     "Balance": Balance,
-		"TradeVolume": TradeVolume,
+		"TotalVolume": TotalVolume,
+		"TradeEvent": TradeEvent,
 		"DailyVolume": DailyVolume,
 		"UserScoreSnapshot": UserScoreSnapshot,
 		"Pools": Pools

@@ -3,9 +3,11 @@ import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import marketsConfig from './marketsConfig.json';
-import { Balance, DailyVolume, Pools, TradeVolume, UserScoreSnapshot } from './schema/store.js';
+import { Balance, DailyVolume, Pools, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { MARKETS } from "./markets.js";
+import { nanoid } from "nanoid";
+
 // import { GLOBAL_CONFIG } from "@sentio/runtime"
 
 // GLOBAL_CONFIG.execution = {
@@ -54,7 +56,6 @@ MARKETS.forEach((market) => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -86,7 +87,6 @@ MARKETS.forEach((market) => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -117,7 +117,6 @@ MARKETS.forEach((market) => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -150,7 +149,6 @@ MARKETS.forEach((market) => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -182,7 +180,6 @@ MARKETS.forEach((market) => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(balance);
@@ -211,8 +208,7 @@ MARKETS.forEach((market) => {
                 seller_balance.liquidBaseAmount = seller_liquidBaseAmount,
                     seller_balance.liquidQuoteAmount = seller_liquidQuoteAmount,
                     seller_balance.lockedBaseAmount = seller_lockedBaseAmount,
-                    seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount,
-                    seller_balance.tradeVolume = BigDecimal(seller_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9))))
+                    seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount
             } else {
                 seller_balance = new Balance({
                     id: seller_balanceId,
@@ -222,7 +218,6 @@ MARKETS.forEach((market) => {
                     liquidQuoteAmount: seller_liquidQuoteAmount,
                     lockedBaseAmount: seller_lockedBaseAmount,
                     lockedQuoteAmount: seller_lockedQuoteAmount,
-                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(seller_balance);
@@ -231,8 +226,7 @@ MARKETS.forEach((market) => {
                 buyer_balance.liquidBaseAmount = buyer_liquidBaseAmount,
                     buyer_balance.liquidQuoteAmount = buyer_liquidQuoteAmount,
                     buyer_balance.lockedBaseAmount = buyer_lockedBaseAmount,
-                    buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount,
-                    buyer_balance.tradeVolume = BigDecimal(buyer_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9))))
+                    buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount
             } else {
                 buyer_balance = new Balance({
                     id: buyer_balanceId,
@@ -242,16 +236,15 @@ MARKETS.forEach((market) => {
                     liquidQuoteAmount: buyer_liquidQuoteAmount,
                     lockedBaseAmount: buyer_lockedBaseAmount,
                     lockedQuoteAmount: buyer_lockedQuoteAmount,
-                    tradeVolume: 0
                 });
             }
             await ctx.store.upsert(buyer_balance);
 
-            const tradeVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9)));
-            const tradeEvent = new TradeVolume({
-                id: getHash(`${ctx.timestamp}-${trade.data.base_buy_order_id}-${trade.data.base_sell_order_id}-${trade.data.trade_price}-${trade.data.trade_size}-${ctx.contractAddress}`),
+            const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9)));
+            const tradeEvent = new TradeEvent({
+                id: nanoid(),
                 timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-                tradeVolume: tradeVolume.toNumber()
+                volume: eventVolume.toNumber()
             });
             await ctx.store.upsert(tradeEvent);
         })
@@ -303,7 +296,6 @@ MARKETS.forEach((market) => {
                     pool_address: ctx.contractAddress,
                     total_value_locked_score: Number(balanceTVL),
                     market_depth_score: undefined,
-                    tradeVolume: balance.tradeVolume
                 });
                 await ctx.store.upsert(snapshot);
 
@@ -339,24 +331,39 @@ MARKETS.forEach((market) => {
             let baseAmountOnBalances = BigDecimal(0);
             let baseAmountOnOrders = BigDecimal(0);
 
+            let dailyTradeVolume = BigDecimal(0);
+            let totalTradeVolume = BigDecimal(0);
+
             const currentTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
             const oneDayAgoTimestamp = currentTimestamp - 86400;
-            const allTradeVolumes = await ctx.store.list(TradeVolume, []);
 
-            const recentTrades = allTradeVolumes.filter(
+            const allTradeEvents = await ctx.store.list(TradeEvent, []);
+
+            const dailyTrades = allTradeEvents.filter(
                 (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
             );
 
-            let dailyTradeVolume = BigDecimal(0);
-            for (const trade of recentTrades) {
-                dailyTradeVolume = dailyTradeVolume.plus(BigDecimal(trade.tradeVolume.toString()));
+            for (const trade of dailyTrades) {
+                dailyTradeVolume = dailyTradeVolume.plus(BigDecimal(trade.volume.toString()));
             }
+
+            for (const trade of allTradeEvents) {
+                totalTradeVolume = totalTradeVolume.plus(BigDecimal(trade.volume.toString()));
+            }
+
             const dailyVolume = new DailyVolume({
                 id: ctx.block?.id,
                 timestamp: currentTimestamp,
-                tradeVolume: dailyTradeVolume.toNumber(),
+                volume: dailyTradeVolume.toNumber(),
             });
 
+            const totalVolume = new TotalVolume({
+                id: ctx.block?.id,
+                timestamp: currentTimestamp,
+                volume: totalTradeVolume.toNumber(),
+            });
+
+            await ctx.store.upsert(totalVolume);
             await ctx.store.upsert(dailyVolume);
 
             for (const balance of filteredBalances) {
