@@ -42,6 +42,10 @@ export class Balance extends AbstractEntity  {
 	@Required
 	@Column("BigInt")
 	lockedQuoteAmount: BigInt
+
+	@Required
+	@Column("Float")
+	tradeVolume: Float
   constructor(data: Partial<Balance>) {super()}
 }
 
@@ -133,6 +137,10 @@ export class UserScoreSnapshot extends AbstractEntity  {
 
 	@Column("Int")
 	market_depth_score?: Int
+
+	@Required
+	@Column("Float")
+	tradeVolume: Float
   constructor(data: Partial<UserScoreSnapshot>) {super()}
 }
 
@@ -202,6 +210,7 @@ const source = `type Balance @entity {
   liquidQuoteAmount: BigInt!
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
+  tradeVolume: Float!
 }
 
 type TotalVolume @entity {
@@ -232,6 +241,7 @@ type UserScoreSnapshot @entity {
   pool_address: String!
   total_value_locked_score: Float!
   market_depth_score: Int
+  tradeVolume: Float!
 }
 
 type Pools @entity {
