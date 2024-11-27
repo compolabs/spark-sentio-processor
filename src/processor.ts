@@ -2,10 +2,9 @@ import { SparkMarketProcessor } from "./types/fuel/SparkMarketProcessor.js";
 import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
-import marketsConfig from './marketsConfig.json';
+import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyVolume, Pools, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
-import { MARKETS } from "./markets.js";
 import { nanoid } from "nanoid";
 
 // import { GLOBAL_CONFIG } from "@sentio/runtime"
@@ -26,10 +25,10 @@ const tradeOrderCounter = Counter.register("tradeOrder");
 const shortCounter = Counter.register("shorts");
 const longCounter = Counter.register("longs");
 
-MARKETS.forEach((market) => {
+Object.values(marketsConfig).forEach(config => {
     SparkMarketProcessor.bind({
-        address: market,
-        chainId: FuelNetwork.MAIN_NET
+        address: config.market,
+        chainId: FuelNetwork.MAIN_NET,
     })
         .onLogDepositEvent(async (deposit, ctx) => {
             depositCounter.add(ctx, 1);
