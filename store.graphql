@@ -7,22 +7,26 @@ type Balance @entity {
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
   tradeVolume: Float!
+  timestamp: Int!
 }
 
 type TotalVolume @entity {
   id: ID!
+  market: String!
   timestamp: Int!
   volume: Float!
 }
 
 type TradeEvent @entity {
   id: ID!
+  market: String!
   timestamp: Int!
   volume: Float!
 }
 
 type DailyVolume @entity {
   id: ID!
+  market: String!
   timestamp: Int!
   volume: Float!
 }

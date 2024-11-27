@@ -46,6 +46,10 @@ export class Balance extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	tradeVolume: Float
+
+	@Required
+	@Column("Int")
+	timestamp: Int
   constructor(data: Partial<Balance>) {super()}
 }
 
@@ -55,6 +59,10 @@ export class TotalVolume extends AbstractEntity  {
 	@Required
 	@Column("ID")
 	id: ID
+
+	@Required
+	@Column("String")
+	market: String
 
 	@Required
 	@Column("Int")
@@ -74,6 +82,10 @@ export class TradeEvent extends AbstractEntity  {
 	id: ID
 
 	@Required
+	@Column("String")
+	market: String
+
+	@Required
 	@Column("Int")
 	timestamp: Int
 
@@ -89,6 +101,10 @@ export class DailyVolume extends AbstractEntity  {
 	@Required
 	@Column("ID")
 	id: ID
+
+	@Required
+	@Column("String")
+	market: String
 
 	@Required
 	@Column("Int")
@@ -211,22 +227,26 @@ const source = `type Balance @entity {
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
   tradeVolume: Float!
+  timestamp: Int!
 }
 
 type TotalVolume @entity {
   id: ID!
+  market: String!
   timestamp: Int!
   volume: Float!
 }
 
 type TradeEvent @entity {
   id: ID!
+  market: String!
   timestamp: Int!
   volume: Float!
 }
 
 type DailyVolume @entity {
   id: ID!
+  market: String!
   timestamp: Int!
   volume: Float!
 }

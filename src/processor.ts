@@ -45,7 +45,8 @@ Object.values(marketsConfig).forEach(config => {
                 balance.liquidBaseAmount = liquidBaseAmount,
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount
+                    balance.lockedQuoteAmount = lockedQuoteAmount,
+                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
                 balance = new Balance({
                     id: balanceId,
@@ -55,7 +56,8 @@ Object.values(marketsConfig).forEach(config => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
+                    tradeVolume: 0,
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
                 });
             }
             await ctx.store.upsert(balance);
@@ -77,7 +79,8 @@ Object.values(marketsConfig).forEach(config => {
                 balance.liquidBaseAmount = liquidBaseAmount,
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount
+                    balance.lockedQuoteAmount = lockedQuoteAmount,
+                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
                 balance = new Balance({
                     id: balanceId,
@@ -87,7 +90,8 @@ Object.values(marketsConfig).forEach(config => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
+                    tradeVolume: 0,
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
                 });
             }
             await ctx.store.upsert(balance);
@@ -108,7 +112,8 @@ Object.values(marketsConfig).forEach(config => {
                 balance.liquidBaseAmount = liquidBaseAmount,
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount
+                    balance.lockedQuoteAmount = lockedQuoteAmount,
+                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
                 balance = new Balance({
                     id: balanceId,
@@ -118,7 +123,8 @@ Object.values(marketsConfig).forEach(config => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
+                    tradeVolume: 0,
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
                 });
             }
             await ctx.store.upsert(balance);
@@ -141,7 +147,8 @@ Object.values(marketsConfig).forEach(config => {
                 balance.liquidBaseAmount = liquidBaseAmount,
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount
+                    balance.lockedQuoteAmount = lockedQuoteAmount,
+                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
                 balance = new Balance({
                     id: balanceId,
@@ -151,7 +158,8 @@ Object.values(marketsConfig).forEach(config => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
+                    tradeVolume: 0,
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
                 });
             }
             await ctx.store.upsert(balance);
@@ -173,7 +181,8 @@ Object.values(marketsConfig).forEach(config => {
                 balance.liquidBaseAmount = liquidBaseAmount,
                     balance.liquidQuoteAmount = liquidQuoteAmount,
                     balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount
+                    balance.lockedQuoteAmount = lockedQuoteAmount,
+                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
                 balance = new Balance({
                     id: balanceId,
@@ -183,7 +192,8 @@ Object.values(marketsConfig).forEach(config => {
                     liquidQuoteAmount: liquidQuoteAmount,
                     lockedBaseAmount: lockedBaseAmount,
                     lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0
+                    tradeVolume: 0,
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
                 });
             }
             await ctx.store.upsert(balance);
@@ -213,7 +223,8 @@ Object.values(marketsConfig).forEach(config => {
                     seller_balance.liquidQuoteAmount = seller_liquidQuoteAmount,
                     seller_balance.lockedBaseAmount = seller_lockedBaseAmount,
                     seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount,
-                    seller_balance.tradeVolume = BigDecimal(seller_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9))))
+                    seller_balance.tradeVolume = BigDecimal(seller_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)))),
+                    seller_balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
                 seller_balance = new Balance({
                     id: seller_balanceId,
@@ -223,7 +234,8 @@ Object.values(marketsConfig).forEach(config => {
                     liquidQuoteAmount: seller_liquidQuoteAmount,
                     lockedBaseAmount: seller_lockedBaseAmount,
                     lockedQuoteAmount: seller_lockedQuoteAmount,
-                    tradeVolume: 0
+                    tradeVolume: 0,
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
                 });
             }
             await ctx.store.upsert(seller_balance);
@@ -233,7 +245,8 @@ Object.values(marketsConfig).forEach(config => {
                     buyer_balance.liquidQuoteAmount = buyer_liquidQuoteAmount,
                     buyer_balance.lockedBaseAmount = buyer_lockedBaseAmount,
                     buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount,
-                    buyer_balance.tradeVolume = BigDecimal(buyer_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9))))
+                    buyer_balance.tradeVolume = BigDecimal(buyer_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)))),
+                    buyer_balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
                 buyer_balance = new Balance({
                     id: buyer_balanceId,
@@ -243,14 +256,16 @@ Object.values(marketsConfig).forEach(config => {
                     liquidQuoteAmount: buyer_liquidQuoteAmount,
                     lockedBaseAmount: buyer_lockedBaseAmount,
                     lockedQuoteAmount: buyer_lockedQuoteAmount,
-                    tradeVolume: 0
+                    tradeVolume: 0,
+                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
                 });
             }
             await ctx.store.upsert(buyer_balance);
 
-            const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(9)));
+            const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
             const tradeEvent = new TradeEvent({
                 id: nanoid(),
+                market: ctx.contractAddress,
                 timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
                 volume: eventVolume.toNumber()
             });
@@ -314,11 +329,11 @@ Object.values(marketsConfig).forEach(config => {
                     creation_block_number: 5813594,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
                     pool_address: ctx.contractAddress,
-                    lp_token_address: "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
-                    lp_token_symbol: "ETH",
-                    token_address: "0x286c479da40dc953bddc3bb4c453b608bba2e0ac483b077bd475174115395e6b",
-                    token_symbol: "USDC",
-                    token_decimals: "6",
+                    lp_token_address: config.baseToken,
+                    lp_token_symbol: config.baseTokenSymbol,
+                    token_address: config.quoteToken,
+                    token_symbol: config.quoteTokenSymbol,
+                    token_decimals: config.quoteDecimal,
                     token_index: 0,
                     fee_rate: 0.023,
                     dex_type: "Orderbook",
@@ -362,12 +377,14 @@ Object.values(marketsConfig).forEach(config => {
 
             const dailyVolume = new DailyVolume({
                 id: ctx.block?.id,
+                market: ctx.contractAddress,
                 timestamp: currentTimestamp,
                 volume: dailyTradeVolume.toNumber(),
             });
 
             const totalVolume = new TotalVolume({
                 id: ctx.block?.id,
+                market: ctx.contractAddress,
                 timestamp: currentTimestamp,
                 volume: totalTradeVolume.toNumber(),
             });

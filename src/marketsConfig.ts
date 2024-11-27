@@ -8,10 +8,11 @@ export const marketsConfig = {
     "quoteTokenSymbol": "USDC",
     "baseDecimal": "9",
     "quoteDecimal": "6",
+    "priceDecimal": "9",
     "defaultBasePrice": 2500,
     "defaultQuotePrice": 1
   },
-   "USDC-USDT": {
+  "USDC-USDT": {
     "name": "USDC-USDT",
     "market": "0xdafe498b31f24ea5577055e86bf77e96bcba2c39a7ae47abaa819c303a45a352",
     "baseToken": "0x286c479da40dc953bddc3bb4c453b608bba2e0ac483b077bd475174115395e6b",
@@ -20,6 +21,7 @@ export const marketsConfig = {
     "quoteTokenSymbol": "USDT",
     "baseDecimal": "6",
     "quoteDecimal": "6",
+    "priceDecimal": "9",
     "defaultBasePrice": 1,
     "defaultQuotePrice": 1
   }
