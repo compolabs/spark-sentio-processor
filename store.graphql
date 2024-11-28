@@ -12,7 +12,6 @@ type Balance @entity {
 
 type TotalVolume @entity {
   id: ID!
-  market: String!
   timestamp: Int!
   volume: Float!
 }
@@ -33,7 +32,6 @@ type TradeEvent @entity {
 
 type DailyVolume @entity {
   id: ID!
-  market: String!
   timestamp: Int!
   volume: Float!
 }

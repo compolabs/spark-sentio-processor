@@ -61,10 +61,6 @@ export class TotalVolume extends AbstractEntity  {
 	id: ID
 
 	@Required
-	@Column("String")
-	market: String
-
-	@Required
 	@Column("Int")
 	timestamp: Int
 
@@ -122,10 +118,6 @@ export class DailyVolume extends AbstractEntity  {
 	@Required
 	@Column("ID")
 	id: ID
-
-	@Required
-	@Column("String")
-	market: String
 
 	@Required
 	@Column("Int")
@@ -274,7 +266,6 @@ const source = `type Balance @entity {
 
 type TotalVolume @entity {
   id: ID!
-  market: String!
   timestamp: Int!
   volume: Float!
 }
@@ -295,7 +286,6 @@ type TradeEvent @entity {
 
 type DailyVolume @entity {
   id: ID!
-  market: String!
   timestamp: Int!
   volume: Float!
 }

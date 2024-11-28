@@ -22,6 +22,7 @@ const withdrawToMarketCounter = Counter.register("withdrawToMarket");
 const openOrderCounter = Counter.register("openOrder");
 const cancelOrderCounter = Counter.register("cancelOrder");
 const tradeOrderCounter = Counter.register("tradeOrder");
+const totalEventsCounter = Counter.register("totalEvents");
 const shortCounter = Counter.register("shorts");
 const longCounter = Counter.register("longs");
 
@@ -32,6 +33,8 @@ Object.values(marketsConfig).forEach(config => {
     })
         .onLogDepositEvent(async (deposit, ctx) => {
             depositCounter.add(ctx, 1);
+            totalEventsCounter.add(ctx, 1);
+
             const liquidBaseAmount = BigInt(deposit.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(deposit.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(deposit.data.account.locked.base.toString());
@@ -65,6 +68,7 @@ Object.values(marketsConfig).forEach(config => {
         })
         .onLogWithdrawEvent(async (withdraw, ctx) => {
             withdrawCounter.add(ctx, 1);
+            totalEventsCounter.add(ctx, 1);
 
             const liquidBaseAmount = BigInt(withdraw.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(withdraw.data.account.liquid.quote.toString());
@@ -99,6 +103,8 @@ Object.values(marketsConfig).forEach(config => {
         })
         .onLogWithdrawToMarketEvent(async (withdrawTo, ctx) => {
             withdrawToMarketCounter.add(ctx, 1);
+            totalEventsCounter.add(ctx, 1);
+
             const liquidBaseAmount = BigInt(withdrawTo.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(withdrawTo.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(withdrawTo.data.account.locked.base.toString());
@@ -132,6 +138,8 @@ Object.values(marketsConfig).forEach(config => {
 
         .onLogOpenOrderEvent(async (open, ctx: any) => {
             openOrderCounter.add(ctx, 1);
+            totalEventsCounter.add(ctx, 1);
+
             open.data.order_type === "Buy" ? longCounter.add(ctx, 1) : shortCounter.add(ctx, 1);
 
             const liquidBaseAmount = BigInt(open.data.balance.liquid.base.toString());
@@ -167,6 +175,7 @@ Object.values(marketsConfig).forEach(config => {
         })
         .onLogCancelOrderEvent(async (cancel, ctx: any) => {
             cancelOrderCounter.add(ctx, 1);
+            totalEventsCounter.add(ctx, 1);
 
             const liquidBaseAmount = BigInt(cancel.data.balance.liquid.base.toString());
             const liquidQuoteAmount = BigInt(cancel.data.balance.liquid.quote.toString());
@@ -201,6 +210,7 @@ Object.values(marketsConfig).forEach(config => {
         })
         .onLogTradeOrderEvent(async (trade, ctx: any) => {
             tradeOrderCounter.add(ctx, 1);
+            totalEventsCounter.add(ctx, 1);
 
             const seller_liquidBaseAmount = BigInt(trade.data.s_balance.liquid.base.toString());
             const seller_liquidQuoteAmount = BigInt(trade.data.s_balance.liquid.quote.toString());
@@ -362,15 +372,15 @@ Object.values(marketsConfig).forEach(config => {
             const currentTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
             const oneDayAgoTimestamp = currentTimestamp - 86400;
 
-            const protocolTradeEvents = await ctx.store.list(TradeEvent, []);
-            const marketTradeEvents = protocolTradeEvents.filter(trade => trade.market === ctx.contractAddress);
+            const protocolTrades = await ctx.store.list(TradeEvent, []);
+            const marketTrades = protocolTrades.filter(trade => trade.market === ctx.contractAddress);
 
 
-            const dailyProtocolTrades = protocolTradeEvents.filter(
+            const dailyProtocolTrades = protocolTrades.filter(
                 (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
             );
 
-            const dailyMarketTrades = marketTradeEvents.filter(
+            const dailyMarketTrades = marketTrades.filter(
                 (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
             );
 
@@ -383,17 +393,16 @@ Object.values(marketsConfig).forEach(config => {
                 dailyMarketTradeVolume = dailyMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
             }
 
-            for (const trade of protocolTradeEvents) {
+            for (const trade of protocolTrades) {
                 totalTradeVolume = totalTradeVolume.plus(BigDecimal(trade.volume.toString()));
             }
 
-            for (const trade of marketTradeEvents) {
+            for (const trade of marketTrades) {
                 totalMarketTradeVolume = totalMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
             }
 
             const dailyVolume = new DailyVolume({
                 id: ctx.block?.id,
-                market: ctx.contractAddress,
                 timestamp: currentTimestamp,
                 volume: dailyTradeVolume.toNumber(),
             });
@@ -407,7 +416,6 @@ Object.values(marketsConfig).forEach(config => {
             
             const totalVolume = new TotalVolume({
                 id: ctx.block?.id,
-                market: ctx.contractAddress,
                 timestamp: currentTimestamp,
                 volume: totalTradeVolume.toNumber(),
             });
