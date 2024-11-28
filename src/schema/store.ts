@@ -74,6 +74,27 @@ export class TotalVolume extends AbstractEntity  {
   constructor(data: Partial<TotalVolume>) {super()}
 }
 
+@Entity("TotalMarketVolume")
+export class TotalMarketVolume extends AbstractEntity  {
+
+	@Required
+	@Column("ID")
+	id: ID
+
+	@Required
+	@Column("String")
+	market: String
+
+	@Required
+	@Column("Int")
+	timestamp: Int
+
+	@Required
+	@Column("Float")
+	volume: Float
+  constructor(data: Partial<TotalMarketVolume>) {super()}
+}
+
 @Entity("TradeEvent")
 export class TradeEvent extends AbstractEntity  {
 
@@ -114,6 +135,27 @@ export class DailyVolume extends AbstractEntity  {
 	@Column("Float")
 	volume: Float
   constructor(data: Partial<DailyVolume>) {super()}
+}
+
+@Entity("DailyMarketVolume")
+export class DailyMarketVolume extends AbstractEntity  {
+
+	@Required
+	@Column("ID")
+	id: ID
+
+	@Required
+	@Column("String")
+	market: String
+
+	@Required
+	@Column("Int")
+	timestamp: Int
+
+	@Required
+	@Column("Float")
+	volume: Float
+  constructor(data: Partial<DailyMarketVolume>) {super()}
 }
 
 @Entity("UserScoreSnapshot")
@@ -237,6 +279,13 @@ type TotalVolume @entity {
   volume: Float!
 }
 
+type TotalMarketVolume @entity {
+  id: ID!
+  market: String!
+  timestamp: Int!
+  volume: Float!
+}
+
 type TradeEvent @entity {
   id: ID!
   market: String!
@@ -245,6 +294,13 @@ type TradeEvent @entity {
 }
 
 type DailyVolume @entity {
+  id: ID!
+  market: String!
+  timestamp: Int!
+  volume: Float!
+}
+
+type DailyMarketVolume @entity {
   id: ID!
   market: String!
   timestamp: Int!
@@ -285,8 +341,10 @@ DatabaseSchema.register({
   entities: {
     "Balance": Balance,
 		"TotalVolume": TotalVolume,
+		"TotalMarketVolume": TotalMarketVolume,
 		"TradeEvent": TradeEvent,
 		"DailyVolume": DailyVolume,
+		"DailyMarketVolume": DailyMarketVolume,
 		"UserScoreSnapshot": UserScoreSnapshot,
 		"Pools": Pools
   }

@@ -17,6 +17,13 @@ type TotalVolume @entity {
   volume: Float!
 }
 
+type TotalMarketVolume @entity {
+  id: ID!
+  market: String!
+  timestamp: Int!
+  volume: Float!
+}
+
 type TradeEvent @entity {
   id: ID!
   market: String!
@@ -25,6 +32,13 @@ type TradeEvent @entity {
 }
 
 type DailyVolume @entity {
+  id: ID!
+  market: String!
+  timestamp: Int!
+  volume: Float!
+}
+
+type DailyMarketVolume @entity {
   id: ID!
   market: String!
   timestamp: Int!

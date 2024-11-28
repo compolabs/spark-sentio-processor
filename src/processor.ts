@@ -3,7 +3,7 @@ import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import { marketsConfig } from './marketsConfig.js';
-import { Balance, DailyVolume, Pools, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
+import { Balance, DailyMarketVolume, DailyVolume, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
 
@@ -273,10 +273,9 @@ Object.values(marketsConfig).forEach(config => {
         })
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
-            const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
-            let TVL = BigDecimal(0);
+            const marketBalances = balances.filter(balance => balance.market === ctx.contractAddress);
 
-            for (const balance of filteredBalances) {
+            for (const balance of marketBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
 
                 if (!marketConfig) {
@@ -306,8 +305,6 @@ Object.values(marketsConfig).forEach(config => {
                 const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
                 const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
                 const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
-
-                TVL = TVL.plus(balanceTVL);
 
                 const snapshot = new UserScoreSnapshot({
                     id: getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`),
@@ -343,7 +340,8 @@ Object.values(marketsConfig).forEach(config => {
         }, 60, 60)
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
-            const filteredBalances = balances.filter(balance => balance.market === ctx.contractAddress);
+            const marketBalances = balances.filter(balance => balance.market === ctx.contractAddress);
+           
             let TVL = BigDecimal(0);
             let quoteTVL = BigDecimal(0);
             let baseTVL = BigDecimal(0);
@@ -356,23 +354,41 @@ Object.values(marketsConfig).forEach(config => {
             let baseAmountOnOrders = BigDecimal(0);
 
             let dailyTradeVolume = BigDecimal(0);
+            let dailyMarketTradeVolume = BigDecimal(0);
+
             let totalTradeVolume = BigDecimal(0);
+            let totalMarketTradeVolume = BigDecimal(0);
 
             const currentTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
             const oneDayAgoTimestamp = currentTimestamp - 86400;
 
-            const allTradeEvents = await ctx.store.list(TradeEvent, []);
+            const protocolTradeEvents = await ctx.store.list(TradeEvent, []);
+            const marketTradeEvents = protocolTradeEvents.filter(trade => trade.market === ctx.contractAddress);
 
-            const dailyTrades = allTradeEvents.filter(
+
+            const dailyProtocolTrades = protocolTradeEvents.filter(
                 (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
             );
 
-            for (const trade of dailyTrades) {
+            const dailyMarketTrades = marketTradeEvents.filter(
+                (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
+            );
+
+
+            for (const trade of dailyProtocolTrades) {
                 dailyTradeVolume = dailyTradeVolume.plus(BigDecimal(trade.volume.toString()));
             }
 
-            for (const trade of allTradeEvents) {
+            for (const trade of dailyMarketTrades) {
+                dailyMarketTradeVolume = dailyMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
+            }
+
+            for (const trade of protocolTradeEvents) {
                 totalTradeVolume = totalTradeVolume.plus(BigDecimal(trade.volume.toString()));
+            }
+
+            for (const trade of marketTradeEvents) {
+                totalMarketTradeVolume = totalMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
             }
 
             const dailyVolume = new DailyVolume({
@@ -382,6 +398,13 @@ Object.values(marketsConfig).forEach(config => {
                 volume: dailyTradeVolume.toNumber(),
             });
 
+            const dailyMarketVolume = new DailyMarketVolume({
+                id: ctx.block?.id,
+                market: ctx.contractAddress,
+                timestamp: currentTimestamp,
+                volume: dailyMarketTradeVolume.toNumber(),
+            });
+            
             const totalVolume = new TotalVolume({
                 id: ctx.block?.id,
                 market: ctx.contractAddress,
@@ -389,10 +412,19 @@ Object.values(marketsConfig).forEach(config => {
                 volume: totalTradeVolume.toNumber(),
             });
 
-            await ctx.store.upsert(totalVolume);
-            await ctx.store.upsert(dailyVolume);
+            const totalMarketVolume = new TotalMarketVolume({
+                id: ctx.block?.id,
+                market: ctx.contractAddress,
+                timestamp: currentTimestamp,
+                volume: totalMarketTradeVolume.toNumber(),
+            });
 
-            for (const balance of filteredBalances) {
+            await ctx.store.upsert(totalVolume);
+            await ctx.store.upsert(totalMarketVolume);
+            await ctx.store.upsert(dailyVolume);
+            await ctx.store.upsert(dailyMarketVolume);
+
+            for (const balance of marketBalances) {
                 const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
 
                 if (!marketConfig) {
