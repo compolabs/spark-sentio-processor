@@ -28,6 +28,8 @@ type TradeEvent @entity {
   market: String!
   timestamp: Int!
   volume: Float!
+  seller: String!
+  buyer: String!
 }
 
 type DailyVolume @entity {

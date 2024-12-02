@@ -109,6 +109,14 @@ export class TradeEvent extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	volume: Float
+
+	@Required
+	@Column("String")
+	seller: String
+
+	@Required
+	@Column("String")
+	buyer: String
   constructor(data: Partial<TradeEvent>) {super()}
 }
 
@@ -282,6 +290,8 @@ type TradeEvent @entity {
   market: String!
   timestamp: Int!
   volume: Float!
+  seller: String!
+  buyer: String!
 }
 
 type DailyVolume @entity {

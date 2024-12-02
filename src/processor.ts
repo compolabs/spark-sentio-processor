@@ -277,7 +277,9 @@ Object.values(marketsConfig).forEach(config => {
                 id: nanoid(),
                 market: ctx.contractAddress,
                 timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-                volume: eventVolume.toNumber()
+                volume: eventVolume.toNumber(),
+                seller: trade.data.order_seller.Address?.bits,
+                buyer: trade.data.order_buyer.Address?.bits
             });
             await ctx.store.upsert(tradeEvent);
         })
