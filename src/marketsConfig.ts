@@ -9,8 +9,11 @@ export const marketsConfig = {
     "baseDecimal": "9",
     "quoteDecimal": "6",
     "priceDecimal": "9",
-    "defaultBasePrice": 2500,
-    "defaultQuotePrice": 1
+    "defaultBasePrice": 3500,
+    "defaultQuotePrice": 1,
+    "creationBlockNumber": 5813594,
+    "feeRate": 0.023,
+    "dexType": "Orderbook",
   },
   "USDC-USDT": {
     "name": "USDC-USDT",
@@ -23,6 +26,9 @@ export const marketsConfig = {
     "quoteDecimal": "6",
     "priceDecimal": "9",
     "defaultBasePrice": 1,
-    "defaultQuotePrice": 1
+    "defaultQuotePrice": 1,
+    "creationBlockNumber": 7622993,
+    "feeRate": 0.023,
+    "dexType": "Orderbook",
   }
 }

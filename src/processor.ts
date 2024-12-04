@@ -308,8 +308,8 @@ Object.values(marketsConfig).forEach(config => {
                     quoteTokenPrice = marketConfig.defaultQuotePrice
                 }
 
-                const baseBalanceAmount = balance.liquidBaseAmount + balance.lockedBaseAmount;
-                const quoteBalanceAmount = balance.liquidQuoteAmount + balance.lockedQuoteAmount;
+                const baseBalanceAmount = balance.lockedBaseAmount;
+                const quoteBalanceAmount = balance.lockedQuoteAmount;
 
                 const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
                 const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
@@ -335,7 +335,7 @@ Object.values(marketsConfig).forEach(config => {
                 const pool = new Pools({
                     id: ctx.contractAddress,
                     chain_id: Number(ctx.chainId),
-                    creation_block_number: 5813594,
+                    creation_block_number: config.creationBlockNumber,
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
                     pool_address: ctx.contractAddress,
                     lp_token_address: config.baseToken,
@@ -344,8 +344,8 @@ Object.values(marketsConfig).forEach(config => {
                     token_symbol: config.quoteTokenSymbol,
                     token_decimals: config.quoteDecimal,
                     token_index: 0,
-                    fee_rate: 0.023,
-                    dex_type: "Orderbook",
+                    fee_rate: config.feeRate,
+                    dex_type: config.dexType,
                 });
                 await ctx.store.upsert(pool);
             }
