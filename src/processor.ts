@@ -3,7 +3,7 @@ import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import { marketsConfig } from './marketsConfig.js';
-import { Balance, DailyMarketVolume, DailyVolume, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
+import { ActiveOrder, Balance, DailyMarketVolume, DailyVolume, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
 
@@ -172,6 +172,15 @@ Object.values(marketsConfig).forEach(config => {
             }
             await ctx.store.upsert(balance);
 
+            const order: ActiveOrder = {
+                id: open.data.order_id,
+                market: ctx.contractAddress,
+                user: open.data.user.Address?.bits || '',
+                amount: BigInt(open.data.amount.toString()),
+                price: BigInt(open.data.price.toString()),
+            };
+            await ctx.store.upsert(order);
+
         })
         .onLogCancelOrderEvent(async (cancel, ctx: any) => {
             cancelOrderCounter.add(ctx, 1);
@@ -207,6 +216,7 @@ Object.values(marketsConfig).forEach(config => {
             }
             await ctx.store.upsert(balance);
 
+            await ctx.store.delete(cancel.data.order_id);
         })
         .onLogTradeOrderEvent(async (trade, ctx: any) => {
             tradeOrderCounter.add(ctx, 1);
@@ -227,6 +237,9 @@ Object.values(marketsConfig).forEach(config => {
 
             let seller_balance = await ctx.store.get(Balance, seller_balanceId);
             let buyer_balance = await ctx.store.get(Balance, buyer_balanceId);
+
+            let sell_order = await ctx.get(ActiveOrder, trade.data.base_sell_order_id)
+            let buy_order = await ctx.get(ActiveOrder, trade.data.base_buy_order_id)
 
             if (seller_balance) {
                 seller_balance.liquidBaseAmount = seller_liquidBaseAmount,
@@ -282,6 +295,35 @@ Object.values(marketsConfig).forEach(config => {
                 buyer: trade.data.order_buyer.Address?.bits
             });
             await ctx.store.upsert(tradeEvent);
+
+            if (buy_order && sell_order) {
+
+                const updatedBuyAmount = BigInt(buy_order.amount) - BigInt(trade.data.trade_size.toString());
+                const updatedSellAmount = BigInt(sell_order.amount) - BigInt(trade.data.trade_size.toString());
+
+                const isBuyOrderClosed = updatedBuyAmount === BigInt(0);
+                const isSellOrderClosed = updatedSellAmount === BigInt(0);
+
+                const updatedBuyOrder: ActiveOrder = {
+                    ...buy_order,
+                    amount: updatedBuyAmount.toString(),
+                };
+                ctx.store.upsert(updatedBuyOrder);
+
+                const updatedSellOrder: ActiveOrder = {
+                    ...sell_order,
+                    amount: updatedSellAmount.toString(),
+                };
+                ctx.store.upsert(updatedSellOrder);
+
+                if (isBuyOrderClosed) {
+                    ctx.store.delete(buy_order.id);
+                }
+
+                if (isSellOrderClosed) {
+                    ctx.store.delete(sell_order.id);
+                }
+            }
         })
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
@@ -308,8 +350,8 @@ Object.values(marketsConfig).forEach(config => {
                     quoteTokenPrice = marketConfig.defaultQuotePrice
                 }
 
-                const baseBalanceAmount = balance.lockedBaseAmount;
-                const quoteBalanceAmount = balance.lockedQuoteAmount;
+                const baseBalanceAmount = balance.liquidBaseAmount + balance.lockedBaseAmount;
+                const quoteBalanceAmount = balance.liquidQuoteAmount + balance.lockedQuoteAmount;
 
                 const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
                 const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
@@ -353,7 +395,7 @@ Object.values(marketsConfig).forEach(config => {
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
             const marketBalances = balances.filter(balance => balance.market === ctx.contractAddress);
-           
+
             let TVL = BigDecimal(0);
             let quoteTVL = BigDecimal(0);
             let baseTVL = BigDecimal(0);
@@ -415,7 +457,7 @@ Object.values(marketsConfig).forEach(config => {
                 timestamp: currentTimestamp,
                 volume: dailyMarketTradeVolume.toNumber(),
             });
-            
+
             const totalVolume = new TotalVolume({
                 id: ctx.block?.id,
                 timestamp: currentTimestamp,

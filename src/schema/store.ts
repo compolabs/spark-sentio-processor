@@ -260,6 +260,21 @@ export class Pools extends AbstractEntity  {
 }
 
 
+export class ActiveOrder   {
+
+	id: ID
+
+	market: String
+
+	amount: BigInt
+
+	price: BigInt
+
+	user: String
+  
+}
+
+
 const source = `type Balance @entity {
   id: ID!
   user: String!
@@ -335,6 +350,14 @@ type Pools @entity {
   fee_rate: Float!
   dex_type: String!
 }
+
+type ActiveOrder {
+  id: ID!
+  market: String! @index
+  amount: BigInt!
+  price: BigInt! @index
+  user: String! @index
+}
 `
 DatabaseSchema.register({
   source,
@@ -346,6 +369,7 @@ DatabaseSchema.register({
 		"DailyVolume": DailyVolume,
 		"DailyMarketVolume": DailyMarketVolume,
 		"UserScoreSnapshot": UserScoreSnapshot,
-		"Pools": Pools
+		"Pools": Pools,
+		"ActiveOrder": ActiveOrder
   }
 })

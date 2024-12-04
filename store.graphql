@@ -74,3 +74,10 @@ type Pools @entity {
   dex_type: String!
 }
 
+type ActiveOrder {
+  id: ID!
+  market: String! @index
+  amount: BigInt!
+  price: BigInt! @index
+  user: String! @index
+}
