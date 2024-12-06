@@ -259,19 +259,29 @@ export class Pools extends AbstractEntity  {
   constructor(data: Partial<Pools>) {super()}
 }
 
+@Entity("ActiveOrder")
+export class ActiveOrder extends AbstractEntity  {
 
-export class ActiveOrder   {
-
+	@Required
+	@Column("ID")
 	id: ID
 
+	@Required
+	@Column("String")
 	market: String
 
+	@Required
+	@Column("BigInt")
 	amount: BigInt
 
+	@Required
+	@Column("BigInt")
 	price: BigInt
 
+	@Required
+	@Column("String")
 	user: String
-  
+  constructor(data: Partial<ActiveOrder>) {super()}
 }
 
 
@@ -351,7 +361,7 @@ type Pools @entity {
   dex_type: String!
 }
 
-type ActiveOrder {
+type ActiveOrder @entity {
   id: ID!
   market: String! @index
   amount: BigInt!
