@@ -30,5 +30,21 @@ export const marketsConfig = {
     "creationBlockNumber": 7622993,
     "feeRate": 0.023,
     "dexType": "Orderbook",
+  },
+  "FUEL-USDC": {
+    "name": "FUEL-USDC",
+    "market": "0x81e83f73530c262b0dbf5414649a875c48a48144de3c08ff68cb9d54b36f2eaa",
+    "baseToken": "0x1d5d97005e41cae2187a895fd8eab0506111e0e2f3331cd3912c15c24e3c1d82",
+    "baseTokenSymbol": "FUEL",
+    "quoteToken": "0x286c479da40dc953bddc3bb4c453b608bba2e0ac483b077bd475174115395e6b",
+    "quoteTokenSymbol": "USDC",
+    "baseDecimal": "9",
+    "quoteDecimal": "6",
+    "priceDecimal": "9",
+    "defaultBasePrice": 0.04,
+    "defaultQuotePrice": 1,
+    "creationBlockNumber": 7622993,
+    "feeRate": 0.023,
+    "dexType": "Orderbook",
   }
 }

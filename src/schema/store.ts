@@ -44,8 +44,40 @@ export class Balance extends AbstractEntity  {
 	lockedQuoteAmount: BigInt
 
 	@Required
+	@Column("Int")
+	txCount: Int
+
+	@Required
+	@Column("Int")
+	depositCount: Int
+
+	@Required
+	@Column("Int")
+	withdrawCount: Int
+
+	@Required
+	@Column("Int")
+	openOrderCount: Int
+
+	@Required
+	@Column("Int")
+	cancelOrderCount: Int
+
+	@Required
+	@Column("Int")
+	tradeCount: Int
+
+	@Required
 	@Column("Float")
-	tradeVolume: Float
+	baseDecimalAmount: Float
+
+	@Required
+	@Column("Float")
+	quoteDecimalAmount: Float
+
+	@Required
+	@Column("Float")
+	tvl: Float
 
 	@Required
 	@Column("Int")
@@ -195,10 +227,6 @@ export class UserScoreSnapshot extends AbstractEntity  {
 
 	@Column("Int")
 	market_depth_score?: Int
-
-	@Required
-	@Column("Float")
-	tradeVolume: Float
   constructor(data: Partial<UserScoreSnapshot>) {super()}
 }
 
@@ -268,7 +296,19 @@ const source = `type Balance @entity {
   liquidQuoteAmount: BigInt!
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
-  tradeVolume: Float!
+  
+  txCount: Int! 
+  depositCount: Int! 
+  withdrawCount: Int! 
+  openOrderCount: Int! 
+  cancelOrderCount: Int! 
+  tradeCount: Int! 
+  
+  baseDecimalAmount: Float!
+  quoteDecimalAmount: Float!
+
+  # tradeVolume: Float!
+  tvl: Float!
   timestamp: Int!
 }
 
@@ -317,7 +357,7 @@ type UserScoreSnapshot @entity {
   pool_address: String!
   total_value_locked_score: Float!
   market_depth_score: Int
-  tradeVolume: Float!
+  # tradeVolume: Float!
 }
 
 type Pools @entity {
@@ -335,6 +375,7 @@ type Pools @entity {
   fee_rate: Float!
   dex_type: String!
 }
+
 `
 DatabaseSchema.register({
   source,

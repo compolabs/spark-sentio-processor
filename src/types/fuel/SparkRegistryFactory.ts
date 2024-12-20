@@ -5,37 +5,33 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 
 /*
-  Fuels version: 0.96.1
+  Fuels version: 0.97.2
 */
 
-import { Contract, ContractFactory, decompressBytecode } from "fuels";
-import type { Provider, Account, DeployContractOptions, DeployContractResult } from "fuels";
+import { ContractFactory, decompressBytecode } from "fuels";
+import type { Provider, Account, DeployContractOptions } from "fuels";
 
 import { SparkRegistry } from './SparkRegistry.js';
 
 const bytecode = decompressBytecode("");
 
-export class SparkRegistryFactory extends ContractFactory {
+export class SparkRegistryFactory extends ContractFactory<SparkRegistry> {
 
   static readonly bytecode = bytecode;
 
   constructor(accountOrProvider: Account | Provider) {
-    super(bytecode, SparkRegistry.abi, accountOrProvider);
+    super(
+      bytecode,
+      SparkRegistry.abi,
+      accountOrProvider,
+      SparkRegistry.storageSlots
+    );
   }
 
-  override deploy<TContract extends Contract = Contract>(
-    deployOptions?: DeployContractOptions
-  ): Promise<DeployContractResult<TContract>> {
-    return super.deploy({
-      storageSlots: SparkRegistry.storageSlots,
-      ...deployOptions,
-    });
-  }
-
-  static async deploy (
+  static deploy (
     wallet: Account,
     options: DeployContractOptions = {}
-  ): Promise<DeployContractResult<SparkRegistry>> {
+  ) {
     const factory = new SparkRegistryFactory(wallet);
     return factory.deploy(options);
   }

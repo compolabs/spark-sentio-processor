@@ -6,6 +6,7 @@ import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
+import { updateBalance } from "./utils.js";
 
 // import { GLOBAL_CONFIG } from "@sentio/runtime"
 
@@ -34,179 +35,65 @@ Object.values(marketsConfig).forEach(config => {
         .onLogDepositEvent(async (deposit, ctx) => {
             depositCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
+            const balanceId = getHash(`${deposit.data.user.Address?.bits}-${ctx.contractAddress}`);
+            let balance = await ctx.store.get(Balance, balanceId);
 
             const liquidBaseAmount = BigInt(deposit.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(deposit.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(deposit.data.account.locked.base.toString());
             const lockedQuoteAmount = BigInt(deposit.data.account.locked.quote.toString());
-
-            const balanceId = getHash(`${deposit.data.user.Address?.bits}-${ctx.contractAddress}`);
-
-            let balance = await ctx.store.get(Balance, balanceId);
-
-            if (balance) {
-                balance.liquidBaseAmount = liquidBaseAmount,
-                    balance.liquidQuoteAmount = liquidQuoteAmount,
-                    balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount,
-                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                balance = new Balance({
-                    id: balanceId,
-                    user: deposit.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                });
-            }
-            await ctx.store.upsert(balance);
-
+            await updateBalance(deposit, "deposit", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onLogWithdrawEvent(async (withdraw, ctx) => {
             withdrawCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
+            const balanceId = getHash(`${withdraw.data.user.Address?.bits}-${ctx.contractAddress}`);
+            let balance = await ctx.store.get(Balance, balanceId);
 
             const liquidBaseAmount = BigInt(withdraw.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(withdraw.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(withdraw.data.account.locked.base.toString());
             const lockedQuoteAmount = BigInt(withdraw.data.account.locked.quote.toString());
-
-            const balanceId = getHash(`${withdraw.data.user.Address?.bits}-${ctx.contractAddress}`);
-
-            let balance = await ctx.store.get(Balance, balanceId);
-
-            if (balance) {
-                balance.liquidBaseAmount = liquidBaseAmount,
-                    balance.liquidQuoteAmount = liquidQuoteAmount,
-                    balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount,
-                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                balance = new Balance({
-                    id: balanceId,
-                    user: withdraw.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                });
-            }
-            await ctx.store.upsert(balance);
-
+            await updateBalance(withdraw, "withdraw", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onLogWithdrawToMarketEvent(async (withdrawTo, ctx) => {
             withdrawToMarketCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
+            const balanceId = getHash(`${withdrawTo.data.user.Address?.bits}-${ctx.contractAddress}`);
+            let balance = await ctx.store.get(Balance, balanceId);
 
             const liquidBaseAmount = BigInt(withdrawTo.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(withdrawTo.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(withdrawTo.data.account.locked.base.toString());
             const lockedQuoteAmount = BigInt(withdrawTo.data.account.locked.quote.toString());
-
-            const balanceId = getHash(`${withdrawTo.data.user.Address?.bits}-${ctx.contractAddress}`);
-
-            let balance = await ctx.store.get(Balance, balanceId);
-
-            if (balance) {
-                balance.liquidBaseAmount = liquidBaseAmount,
-                    balance.liquidQuoteAmount = liquidQuoteAmount,
-                    balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount,
-                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                balance = new Balance({
-                    id: balanceId,
-                    user: withdrawTo.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                });
-            }
-            await ctx.store.upsert(balance);
+            await updateBalance(withdrawTo, "withdrawTo", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
 
         .onLogOpenOrderEvent(async (open, ctx: any) => {
             openOrderCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
-
             open.data.order_type === "Buy" ? longCounter.add(ctx, 1) : shortCounter.add(ctx, 1);
+            const balanceId = getHash(`${open.data.user.Address?.bits}-${ctx.contractAddress}`);
+            let balance = await ctx.store.get(Balance, balanceId);
 
             const liquidBaseAmount = BigInt(open.data.balance.liquid.base.toString());
             const liquidQuoteAmount = BigInt(open.data.balance.liquid.quote.toString());
             const lockedBaseAmount = BigInt(open.data.balance.locked.base.toString());
             const lockedQuoteAmount = BigInt(open.data.balance.locked.quote.toString());
-
-            const balanceId = getHash(`${open.data.user.Address?.bits}-${ctx.contractAddress}`);
-
-            let balance = await ctx.store.get(Balance, balanceId);
-
-            if (balance) {
-                balance.liquidBaseAmount = liquidBaseAmount,
-                    balance.liquidQuoteAmount = liquidQuoteAmount,
-                    balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount,
-                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                balance = new Balance({
-                    id: balanceId,
-                    user: open.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                });
-            }
-            await ctx.store.upsert(balance);
-
+            await updateBalance(open, "open", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onLogCancelOrderEvent(async (cancel, ctx: any) => {
             cancelOrderCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
+            const balanceId = getHash(`${cancel.data.user.Address?.bits}-${ctx.contractAddress}`);
+            let balance = await ctx.store.get(Balance, balanceId);
 
             const liquidBaseAmount = BigInt(cancel.data.balance.liquid.base.toString());
             const liquidQuoteAmount = BigInt(cancel.data.balance.liquid.quote.toString());
             const lockedBaseAmount = BigInt(cancel.data.balance.locked.base.toString());
             const lockedQuoteAmount = BigInt(cancel.data.balance.locked.quote.toString());
 
-            const balanceId = getHash(`${cancel.data.user.Address?.bits}-${ctx.contractAddress}`);
-
-            let balance = await ctx.store.get(Balance, balanceId);
-
-            if (balance) {
-                balance.liquidBaseAmount = liquidBaseAmount,
-                    balance.liquidQuoteAmount = liquidQuoteAmount,
-                    balance.lockedBaseAmount = lockedBaseAmount,
-                    balance.lockedQuoteAmount = lockedQuoteAmount,
-                    balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                balance = new Balance({
-                    id: balanceId,
-                    user: cancel.data.user.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: liquidBaseAmount,
-                    liquidQuoteAmount: liquidQuoteAmount,
-                    lockedBaseAmount: lockedBaseAmount,
-                    lockedQuoteAmount: lockedQuoteAmount,
-                    tradeVolume: 0,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                });
-            }
-            await ctx.store.upsert(balance);
-
+            await updateBalance(cancel, "cancel", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onLogTradeOrderEvent(async (trade, ctx: any) => {
             tradeOrderCounter.add(ctx, 1);
@@ -228,49 +115,8 @@ Object.values(marketsConfig).forEach(config => {
             let seller_balance = await ctx.store.get(Balance, seller_balanceId);
             let buyer_balance = await ctx.store.get(Balance, buyer_balanceId);
 
-            if (seller_balance) {
-                seller_balance.liquidBaseAmount = seller_liquidBaseAmount,
-                    seller_balance.liquidQuoteAmount = seller_liquidQuoteAmount,
-                    seller_balance.lockedBaseAmount = seller_lockedBaseAmount,
-                    seller_balance.lockedQuoteAmount = seller_lockedQuoteAmount,
-                    seller_balance.tradeVolume = BigDecimal(seller_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(9)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)))),
-                    seller_balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                seller_balance = new Balance({
-                    id: seller_balanceId,
-                    user: trade.data.order_seller.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: seller_liquidBaseAmount,
-                    liquidQuoteAmount: seller_liquidQuoteAmount,
-                    lockedBaseAmount: seller_lockedBaseAmount,
-                    lockedQuoteAmount: seller_lockedQuoteAmount,
-                    tradeVolume: 0,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                });
-            }
-            await ctx.store.upsert(seller_balance);
-
-            if (buyer_balance) {
-                buyer_balance.liquidBaseAmount = buyer_liquidBaseAmount,
-                    buyer_balance.liquidQuoteAmount = buyer_liquidQuoteAmount,
-                    buyer_balance.lockedBaseAmount = buyer_lockedBaseAmount,
-                    buyer_balance.lockedQuoteAmount = buyer_lockedQuoteAmount,
-                    buyer_balance.tradeVolume = BigDecimal(buyer_balance.tradeVolume.toString()).plus(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)))),
-                    buyer_balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                buyer_balance = new Balance({
-                    id: buyer_balanceId,
-                    user: trade.data.order_buyer.Address?.bits,
-                    market: ctx.contractAddress,
-                    liquidBaseAmount: buyer_liquidBaseAmount,
-                    liquidQuoteAmount: buyer_liquidQuoteAmount,
-                    lockedBaseAmount: buyer_lockedBaseAmount,
-                    lockedQuoteAmount: buyer_lockedQuoteAmount,
-                    tradeVolume: 0,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                });
-            }
-            await ctx.store.upsert(buyer_balance);
+            await updateBalance(trade, "trade", ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
+            await updateBalance(trade, "trade", ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
 
             const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
             const tradeEvent = new TradeEvent({
@@ -302,6 +148,10 @@ Object.values(marketsConfig).forEach(config => {
                 let quoteTokenPrice = await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp));
 
                 if (!baseTokenPrice) {
+                    ctx.eventLogger.emit('BaseTokenPriceNotFound', {
+                        severity: LogLevel.ERROR,
+                        message: `price not found for market ${balance.market}`,
+                    });
                     baseTokenPrice = marketConfig.defaultBasePrice
                 }
                 if (!quoteTokenPrice) {
@@ -328,7 +178,7 @@ Object.values(marketsConfig).forEach(config => {
                     pool_address: ctx.contractAddress,
                     total_value_locked_score: Number(balanceTVL),
                     market_depth_score: undefined,
-                    tradeVolume: balance.tradeVolume
+                    // tradeVolume: balance.tradeVolume
                 });
                 await ctx.store.upsert(snapshot);
 
@@ -353,7 +203,7 @@ Object.values(marketsConfig).forEach(config => {
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
             const marketBalances = balances.filter(balance => balance.market === ctx.contractAddress);
-           
+
             let TVL = BigDecimal(0);
             let quoteTVL = BigDecimal(0);
             let baseTVL = BigDecimal(0);
@@ -415,7 +265,7 @@ Object.values(marketsConfig).forEach(config => {
                 timestamp: currentTimestamp,
                 volume: dailyMarketTradeVolume.toNumber(),
             });
-            
+
             const totalVolume = new TotalVolume({
                 id: ctx.block?.id,
                 timestamp: currentTimestamp,
@@ -472,7 +322,11 @@ Object.values(marketsConfig).forEach(config => {
 
                 const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
                 const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
-                const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
+                const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
+
+                balance.tvl = balanceTVL;
+                balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+                await ctx.store.upsert(balance);
 
                 TVL = TVL.plus(balanceTVL);
                 quoteTVL = quoteTVL.plus(balanceQuoteTVL);
