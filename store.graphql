@@ -17,7 +17,6 @@ type Balance @entity {
   baseDecimalAmount: Float!
   quoteDecimalAmount: Float!
 
-  # tradeVolume: Float!
   tvl: Float!
   timestamp: Int!
 }
@@ -42,6 +41,8 @@ type TradeEvent @entity {
   volume: Float!
   seller: String!
   buyer: String!
+  price: Float!
+  amount: Float!
 }
 
 type DailyVolume @entity {
@@ -67,8 +68,19 @@ type UserScoreSnapshot @entity {
   pool_address: String!
   total_value_locked_score: Float!
   market_depth_score: Int
-  # tradeVolume: Float!
 }
+
+# type UserScoreSnapshotNew @entity {
+#   id: ID!
+#   timestamp: Int!
+#   block_date: String!
+#   chain_id: Int!
+#   block_number: Int!
+#   user_address: String!
+#   pool_address: String!
+#   total_value_locked_score: Float!
+#   market_depth_score: Int
+# }
 
 type Pools @entity {
   id: ID!
@@ -86,3 +98,27 @@ type Pools @entity {
   dex_type: String!
 }
 
+enum OrderStatus {
+  Active
+  Closed
+  Canceled
+}
+
+enum OrderType {
+  Sell
+  Buy
+}
+
+type Order @entity {
+  id: ID!
+  amount: BigInt!
+  market: String! @index
+  orderType: OrderType! @index
+  price: BigInt! @index
+  user: String! @index
+  status: OrderStatus! @index
+  initialAmount: BigInt!
+  timestamp: Int!
+  initialTimestamp: Int!
+  # asset: String! @index
+}

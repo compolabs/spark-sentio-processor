@@ -62,7 +62,6 @@ export async function updateBalance(
 			lockedQuoteAmount: BigInt(lockedQuoteAmount.toString()),
 			baseDecimalAmount: 0,
 			quoteDecimalAmount: 0,
-			// tradeVolume: 0,
 			tvl: 0,
 			txCount: 1,
 			depositCount: eventType === 'deposit' ? 1 : 0,

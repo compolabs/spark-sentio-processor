@@ -7,7 +7,12 @@ import { Entity, Required, One, Many, Column, ListColumn, AbstractEntity } from 
 import { BigDecimal } from '@sentio/bigdecimal'
 import { DatabaseSchema } from '@sentio/sdk'
 
-
+export enum OrderStatus {
+  Active = "Active", Closed = "Closed", Canceled = "Canceled"
+}
+export enum OrderType {
+  Sell = "Sell", Buy = "Buy"
+}
 
 
 
@@ -149,6 +154,14 @@ export class TradeEvent extends AbstractEntity  {
 	@Required
 	@Column("String")
 	buyer: String
+
+	@Required
+	@Column("Float")
+	price: Float
+
+	@Required
+	@Column("Float")
+	amount: Float
   constructor(data: Partial<TradeEvent>) {super()}
 }
 
@@ -287,6 +300,51 @@ export class Pools extends AbstractEntity  {
   constructor(data: Partial<Pools>) {super()}
 }
 
+@Entity("Order")
+export class Order extends AbstractEntity  {
+
+	@Required
+	@Column("ID")
+	id: ID
+
+	@Required
+	@Column("BigInt")
+	amount: BigInt
+
+	@Required
+	@Column("String")
+	market: String
+
+	@Required
+	@Column("String")
+	orderType: OrderType
+
+	@Required
+	@Column("BigInt")
+	price: BigInt
+
+	@Required
+	@Column("String")
+	user: String
+
+	@Required
+	@Column("String")
+	status: OrderStatus
+
+	@Required
+	@Column("BigInt")
+	initialAmount: BigInt
+
+	@Required
+	@Column("Int")
+	timestamp: Int
+
+	@Required
+	@Column("Int")
+	initialTimestamp: Int
+  constructor(data: Partial<Order>) {super()}
+}
+
 
 const source = `type Balance @entity {
   id: ID!
@@ -307,7 +365,6 @@ const source = `type Balance @entity {
   baseDecimalAmount: Float!
   quoteDecimalAmount: Float!
 
-  # tradeVolume: Float!
   tvl: Float!
   timestamp: Int!
 }
@@ -332,6 +389,8 @@ type TradeEvent @entity {
   volume: Float!
   seller: String!
   buyer: String!
+  price: Float!
+  amount: Float!
 }
 
 type DailyVolume @entity {
@@ -357,8 +416,19 @@ type UserScoreSnapshot @entity {
   pool_address: String!
   total_value_locked_score: Float!
   market_depth_score: Int
-  # tradeVolume: Float!
 }
+
+# type UserScoreSnapshotNew @entity {
+#   id: ID!
+#   timestamp: Int!
+#   block_date: String!
+#   chain_id: Int!
+#   block_number: Int!
+#   user_address: String!
+#   pool_address: String!
+#   total_value_locked_score: Float!
+#   market_depth_score: Int
+# }
 
 type Pools @entity {
   id: ID!
@@ -376,6 +446,30 @@ type Pools @entity {
   dex_type: String!
 }
 
+enum OrderStatus {
+  Active
+  Closed
+  Canceled
+}
+
+enum OrderType {
+  Sell
+  Buy
+}
+
+type Order @entity {
+  id: ID!
+  amount: BigInt!
+  market: String! @index
+  orderType: OrderType! @index
+  price: BigInt! @index
+  user: String! @index
+  status: OrderStatus! @index
+  initialAmount: BigInt!
+  timestamp: Int!
+  initialTimestamp: Int!
+  # asset: String! @index
+}
 `
 DatabaseSchema.register({
   source,
@@ -387,6 +481,7 @@ DatabaseSchema.register({
 		"DailyVolume": DailyVolume,
 		"DailyMarketVolume": DailyMarketVolume,
 		"UserScoreSnapshot": UserScoreSnapshot,
-		"Pools": Pools
+		"Pools": Pools,
+		"Order": Order
   }
 })

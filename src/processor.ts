@@ -3,16 +3,16 @@ import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
 import crypto from "crypto";
 import { marketsConfig } from './marketsConfig.js';
-import { Balance, DailyMarketVolume, DailyVolume, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
+import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
 import { updateBalance } from "./utils.js";
 
-// import { GLOBAL_CONFIG } from "@sentio/runtime"
+import { GLOBAL_CONFIG } from "@sentio/runtime"
 
-// GLOBAL_CONFIG.execution = {
-//     sequential: true,
-// }
+GLOBAL_CONFIG.execution = {
+    sequential: true,
+}
 export const getHash = (data: string) => {
     return crypto.createHash("sha256").update(data).digest("hex");
 };
@@ -68,7 +68,6 @@ Object.values(marketsConfig).forEach(config => {
             const lockedQuoteAmount = BigInt(withdrawTo.data.account.locked.quote.toString());
             await updateBalance(withdrawTo, "withdrawTo", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
-
         .onLogOpenOrderEvent(async (open, ctx: any) => {
             openOrderCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
@@ -81,12 +80,109 @@ Object.values(marketsConfig).forEach(config => {
             const lockedBaseAmount = BigInt(open.data.balance.locked.base.toString());
             const lockedQuoteAmount = BigInt(open.data.balance.locked.quote.toString());
             await updateBalance(open, "open", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
+            
+            const order = new Order({
+                id: open.data.order_id,
+                market: ctx.contractAddress,
+                amount: BigInt(open.data.amount.toString()),
+                price: BigInt(open.data.price.toString()),
+                user: open.data.user.Address?.bits,
+                status: OrderStatus.Active,
+                orderType: open.data.order_type as unknown as OrderType,
+                initialAmount: BigInt(open.data.amount.toString()),
+                timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                initialTimestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+            })
+            await ctx.store.upsert(order);
+            console.log("OPEN ORDER", open.data.order_id);
+        })
+        .onLogTradeOrderEvent(async (trade, ctx: any) => {
+            tradeOrderCounter.add(ctx, 1);
+            totalEventsCounter.add(ctx, 1);
+            
+            const seller_liquidBaseAmount = BigInt(trade.data.s_balance.liquid.base.toString());
+            const seller_liquidQuoteAmount = BigInt(trade.data.s_balance.liquid.quote.toString());
+            const seller_lockedBaseAmount = BigInt(trade.data.s_balance.locked.base.toString());
+            const seller_lockedQuoteAmount = BigInt(trade.data.s_balance.locked.quote.toString());
+            
+            const buyer_liquidBaseAmount = BigInt(trade.data.b_balance.liquid.base.toString());
+            const buyer_liquidQuoteAmount = BigInt(trade.data.b_balance.liquid.quote.toString());
+            const buyer_lockedBaseAmount = BigInt(trade.data.b_balance.locked.base.toString());
+            const buyer_lockedQuoteAmount = BigInt(trade.data.b_balance.locked.quote.toString());
+            
+            const seller_balanceId = getHash(`${trade.data.order_seller.Address?.bits}-${ctx.contractAddress}`);
+            const buyer_balanceId = getHash(`${trade.data.order_buyer.Address?.bits}-${ctx.contractAddress}`);
+            
+            let seller_balance = await ctx.store.get(Balance, seller_balanceId);
+            let buyer_balance = await ctx.store.get(Balance, buyer_balanceId);
+            
+            let sell_order = await ctx.store.get(Order, trade.data.base_sell_order_id);
+            let buy_order = await ctx.store.get(Order, trade.data.base_buy_order_id);
+            
+            if (sell_order) {
+                const updatedActiveSellAmount = BigInt(sell_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
+                const isActiveSellOrderClosed = updatedActiveSellAmount === 0n;
+                
+                if (isActiveSellOrderClosed) {
+                    sell_order.amount = 0n
+                    sell_order.status = OrderStatus.Closed
+                    sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+                } else {
+                    sell_order.amount = updatedActiveSellAmount;
+                    sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+                }
+                await ctx.store.upsert(sell_order);
+            } else {
+                console.log("NO SELL ORDER FOR TRADE", trade.data.base_sell_order_id);
+            }
+            
+            if (buy_order) {
+                const updatedActiveBuyAmount = BigInt(buy_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
+                const isActiveBuyOrderClosed = updatedActiveBuyAmount === 0n;
+                
+                if (isActiveBuyOrderClosed) {
+                    buy_order.amount = 0n
+                    buy_order.status = OrderStatus.Closed
+                    buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+                } else {
+                    buy_order.amount = updatedActiveBuyAmount;
+                    buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+                }
+                await ctx.store.upsert(buy_order);
+            } else {
+                console.log("NO BUY ORDER FOR TRADE", trade.data.base_buy_order_id);
+            }
+            
+            await updateBalance(trade, "trade", ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
+            await updateBalance(trade, "trade", ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
+            
+            const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
+            const tradeEvent = new TradeEvent({
+                id: nanoid(),
+                market: ctx.contractAddress,
+                timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                price: parseFloat(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).toString()),
+                amount: parseFloat(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)).toString()),
+                volume: eventVolume.toNumber(),
+                seller: trade.data.order_seller.Address?.bits,
+                buyer: trade.data.order_buyer.Address?.bits,
+            });
+            await ctx.store.upsert(tradeEvent);
         })
         .onLogCancelOrderEvent(async (cancel, ctx: any) => {
             cancelOrderCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
             const balanceId = getHash(`${cancel.data.user.Address?.bits}-${ctx.contractAddress}`);
             let balance = await ctx.store.get(Balance, balanceId);
+            let order = await ctx.store.get(Order, cancel.data.order_id);
+            if (order) {
+                order.amount = 0n
+                order.status = OrderStatus.Canceled
+                order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+                await ctx.store.upsert(order)
+            } else {
+                console.log("NO ORDER FOR CANCEL", cancel.data.order_id);
+            }
 
             const liquidBaseAmount = BigInt(cancel.data.balance.liquid.base.toString());
             const liquidQuoteAmount = BigInt(cancel.data.balance.liquid.quote.toString());
@@ -95,52 +191,26 @@ Object.values(marketsConfig).forEach(config => {
 
             await updateBalance(cancel, "cancel", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
-        .onLogTradeOrderEvent(async (trade, ctx: any) => {
-            tradeOrderCounter.add(ctx, 1);
-            totalEventsCounter.add(ctx, 1);
-
-            const seller_liquidBaseAmount = BigInt(trade.data.s_balance.liquid.base.toString());
-            const seller_liquidQuoteAmount = BigInt(trade.data.s_balance.liquid.quote.toString());
-            const seller_lockedBaseAmount = BigInt(trade.data.s_balance.locked.base.toString());
-            const seller_lockedQuoteAmount = BigInt(trade.data.s_balance.locked.quote.toString());
-
-            const buyer_liquidBaseAmount = BigInt(trade.data.b_balance.liquid.base.toString());
-            const buyer_liquidQuoteAmount = BigInt(trade.data.b_balance.liquid.quote.toString());
-            const buyer_lockedBaseAmount = BigInt(trade.data.b_balance.locked.base.toString());
-            const buyer_lockedQuoteAmount = BigInt(trade.data.b_balance.locked.quote.toString());
-
-            const seller_balanceId = getHash(`${trade.data.order_seller.Address?.bits}-${ctx.contractAddress}`);
-            const buyer_balanceId = getHash(`${trade.data.order_buyer.Address?.bits}-${ctx.contractAddress}`);
-
-            let seller_balance = await ctx.store.get(Balance, seller_balanceId);
-            let buyer_balance = await ctx.store.get(Balance, buyer_balanceId);
-
-            await updateBalance(trade, "trade", ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
-            await updateBalance(trade, "trade", ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
-
-            const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
-            const tradeEvent = new TradeEvent({
-                id: nanoid(),
-                market: ctx.contractAddress,
-                timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-                volume: eventVolume.toNumber(),
-                seller: trade.data.order_seller.Address?.bits,
-                buyer: trade.data.order_buyer.Address?.bits
-            });
-            await ctx.store.upsert(tradeEvent);
-        })
         .onTimeInterval(async (block, ctx) => {
-            const balances = await ctx.store.list(Balance, []);
-            const marketBalances = balances.filter(balance => balance.market === ctx.contractAddress);
+            const orders = await ctx.store.list(Order, []);
 
-            for (const balance of marketBalances) {
-                const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
+            const marketActiveOrders = orders.filter(order => order.market === ctx.contractAddress && order.status === "Active");
+
+            const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
+                if (!map[order.user]) {
+                    map[order.user] = [];
+                }
+                map[order.user].push(order);
+                return map;
+            }, {});
+
+            for (const user in userOrdersMap) {
+                const userOrders = userOrdersMap[user];
+
+                const marketConfig = Object.values(marketsConfig).find(market => market.market === userOrders[0].market);
 
                 if (!marketConfig) {
-                    ctx.eventLogger.emit('MarketConfigNotFound', {
-                        severity: LogLevel.ERROR,
-                        message: `Market config not found for market address ${balance.market}`,
-                    });
+                    console.log("Market config not found for market", userOrders[0].market);
                     continue;
                 }
 
@@ -148,37 +218,40 @@ Object.values(marketsConfig).forEach(config => {
                 let quoteTokenPrice = await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp));
 
                 if (!baseTokenPrice) {
-                    ctx.eventLogger.emit('BaseTokenPriceNotFound', {
-                        severity: LogLevel.ERROR,
-                        message: `price not found for market ${balance.market}`,
-                    });
-                    baseTokenPrice = marketConfig.defaultBasePrice
+                    console.log("base price not found for market", userOrders[0].market);
+                    baseTokenPrice = marketConfig.defaultBasePrice;
                 }
                 if (!quoteTokenPrice) {
-                    quoteTokenPrice = marketConfig.defaultQuotePrice
+                    console.log("quote price not found for market", userOrders[0].market);
+                    quoteTokenPrice = marketConfig.defaultQuotePrice;
                 }
 
-                const baseBalanceAmount = balance.lockedBaseAmount;
-                const quoteBalanceAmount = balance.lockedQuoteAmount;
+                const userBaseTVL = userOrders.reduce((totalBase, userOrder) => {
+                    if (userOrder.orderType === "Sell") {
+                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(marketConfig.baseDecimal))) * Number(baseTokenPrice);
+                        return totalBase + orderValue;
+                    }
+                    return totalBase;
+                }, 0);
 
-                const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
-                const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
-
-                const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
-                const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
-                const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toString();
+                const userQuoteTVL = userOrders.reduce((totalQuote, userOrder) => {
+                    if (userOrder.orderType === "Buy") {
+                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(marketConfig.baseDecimal))) * Number(quoteTokenPrice);
+                        return totalQuote + orderValue;
+                    }
+                    return totalQuote;
+                }, 0);
 
                 const snapshot = new UserScoreSnapshot({
-                    id: getHash(`${balance.user}-${ctx.contractAddress}-${block.height}`),
+                    id: getHash(`${user}-${ctx.contractAddress}-${block.height}`),
                     timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
                     block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
                     chain_id: Number(ctx.chainId),
                     block_number: Number(block.height),
-                    user_address: balance.user,
+                    user_address: user, 
                     pool_address: ctx.contractAddress,
-                    total_value_locked_score: Number(balanceTVL),
+                    total_value_locked_score: userBaseTVL + userQuoteTVL,
                     market_depth_score: undefined,
-                    // tradeVolume: balance.tradeVolume
                 });
                 await ctx.store.upsert(snapshot);
 
