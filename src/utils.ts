@@ -2,6 +2,7 @@ import { BigDecimal } from "@sentio/sdk";
 import { LogLevel } from "@sentio/sdk";
 import { marketsConfig } from "./marketsConfig.js";
 import { Balance } from "./schema/store.js";
+import { getPriceBySymbol } from "@sentio/sdk/utils";
 
 export async function updateBalance(
 	event: any,
@@ -74,4 +75,28 @@ export async function updateBalance(
 	}
 
 	await ctx.store.upsert(balance);
+}
+
+export async function getPricesLastWeek(symbol: string, ctx: any): Promise<number[]> {
+	const prices: number[] = [];
+	const currentTimestamp = ctx.timestamp;
+
+	for (let i = 0; i < 7 * 24; i++) {
+		const timestampForHourAgo = currentTimestamp - i * 3600000;
+		const price = await getPriceBySymbol(symbol, new Date(timestampForHourAgo));
+		// console.log("price", price, new Date(timestampForHourAgo), timestampForHourAgo);
+		if (price !== undefined) {
+			prices.push(price);
+		}
+	}
+	console.log("prices",prices, ctx.contractAddress)
+	return prices;
+}
+
+export function calculatePercentile(values: number[], percentile: number, ctx: any): number {
+	values.sort((a, b) => a - b);
+	const index = Math.floor((percentile / 100) * values.length);
+	console.log("values", values, ctx.contractAddress)
+	console.log("index", values[index], values.length, ctx.contractAddress)
+	return values[index];
 }

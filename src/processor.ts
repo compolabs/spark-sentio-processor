@@ -6,7 +6,7 @@ import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
-import { updateBalance } from "./utils.js";
+import { calculatePercentile, getPricesLastWeek, updateBalance } from "./utils.js";
 
 import { GLOBAL_CONFIG } from "@sentio/runtime"
 
@@ -192,9 +192,24 @@ Object.values(marketsConfig).forEach(config => {
             await updateBalance(cancel, "cancel", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onTimeInterval(async (block, ctx) => {
+            const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
+            const quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
             const orders = await ctx.store.list(Order, []);
-
             const marketActiveOrders = orders.filter(order => order.market === ctx.contractAddress && order.status === "Active");
+
+            const historicalBasePrices = await getPricesLastWeek(config.baseTokenSymbol, ctx);
+
+            const basePriceChanges = historicalBasePrices.map((price, index, arr) => {
+                if (index === 0) return 0;
+                return Math.abs(arr[index] - arr[index - 1]);
+            });
+            console.log("Base price changes:", basePriceChanges);
+
+            const percentile = calculatePercentile(basePriceChanges, 95, ctx);
+
+            const lowerLimit = baseTokenPrice * (1 - percentile / 100);
+            const upperLimit = baseTokenPrice * (1 + percentile / 100);
+            console.log("limits:", baseTokenPrice, percentile, lowerLimit, upperLimit);
 
             const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
                 if (!map[order.user]) {
@@ -206,37 +221,29 @@ Object.values(marketsConfig).forEach(config => {
 
             for (const user in userOrdersMap) {
                 const userOrders = userOrdersMap[user];
+                console.log("userOrders", userOrders)
 
-                const marketConfig = Object.values(marketsConfig).find(market => market.market === userOrders[0].market);
+                // if (userOrders.length === 0) continue;
 
-                if (!marketConfig) {
-                    console.log("Market config not found for market", userOrders[0].market);
-                    continue;
-                }
-
-                let baseTokenPrice = await getPriceBySymbol(marketConfig.baseTokenSymbol, new Date(ctx.timestamp));
-                let quoteTokenPrice = await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp));
-
-                if (!baseTokenPrice) {
-                    console.log("base price not found for market", userOrders[0].market);
-                    baseTokenPrice = marketConfig.defaultBasePrice;
-                }
-                if (!quoteTokenPrice) {
-                    console.log("quote price not found for market", userOrders[0].market);
-                    quoteTokenPrice = marketConfig.defaultQuotePrice;
-                }
+                // const marketConfig = Object.values(marketsConfig).find(market => market.market === userOrders[0].market);
+                // if (!marketConfig) {
+                //     console.log("Market config not found for market", userOrders[0].market);
+                //     continue;
+                // }
 
                 const userBaseTVL = userOrders.reduce((totalBase, userOrder) => {
-                    if (userOrder.orderType === "Sell") {
-                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(marketConfig.baseDecimal))) * Number(baseTokenPrice);
+                    const orderPrice = Number(userOrder.price) / Math.pow(10, Number(config.priceDecimal));
+                    if (userOrder.orderType === "Sell" && orderPrice >= lowerLimit && orderPrice <= upperLimit) {
+                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(config.baseDecimal))) * Number(baseTokenPrice);
                         return totalBase + orderValue;
                     }
                     return totalBase;
                 }, 0);
 
                 const userQuoteTVL = userOrders.reduce((totalQuote, userOrder) => {
-                    if (userOrder.orderType === "Buy") {
-                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(marketConfig.baseDecimal))) * Number(quoteTokenPrice);
+                    const orderPrice = Number(userOrder.price) / Math.pow(10, Number(config.priceDecimal));
+                    if (userOrder.orderType === "Buy" && orderPrice >= lowerLimit && orderPrice <= upperLimit) {
+                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(config.baseDecimal))) * Number(quoteTokenPrice);
                         return totalQuote + orderValue;
                     }
                     return totalQuote;
@@ -248,30 +255,31 @@ Object.values(marketsConfig).forEach(config => {
                     block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
                     chain_id: Number(ctx.chainId),
                     block_number: Number(block.height),
-                    user_address: user, 
+                    user_address: user,
                     pool_address: ctx.contractAddress,
                     total_value_locked_score: userBaseTVL + userQuoteTVL,
                     market_depth_score: undefined,
                 });
                 await ctx.store.upsert(snapshot);
 
-                const pool = new Pools({
-                    id: ctx.contractAddress,
-                    chain_id: Number(ctx.chainId),
-                    creation_block_number: config.creationBlockNumber,
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-                    pool_address: ctx.contractAddress,
-                    lp_token_address: config.baseToken,
-                    lp_token_symbol: config.baseTokenSymbol,
-                    token_address: config.quoteToken,
-                    token_symbol: config.quoteTokenSymbol,
-                    token_decimals: config.quoteDecimal,
-                    token_index: 0,
-                    fee_rate: config.feeRate,
-                    dex_type: config.dexType,
-                });
-                await ctx.store.upsert(pool);
             }
+
+            const pool = new Pools({
+                id: ctx.contractAddress,
+                chain_id: Number(ctx.chainId),
+                creation_block_number: config.creationBlockNumber,
+                timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                pool_address: ctx.contractAddress,
+                lp_token_address: config.baseToken,
+                lp_token_symbol: config.baseTokenSymbol,
+                token_address: config.quoteToken,
+                token_symbol: config.quoteTokenSymbol,
+                token_decimals: config.quoteDecimal,
+                token_index: 0,
+                fee_rate: config.feeRate,
+                dex_type: config.dexType,
+            });
+            await ctx.store.upsert(pool);
         }, 60, 60)
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
