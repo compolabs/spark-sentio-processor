@@ -86,7 +86,7 @@ Object.values(marketsConfig).forEach(config => {
                 market: ctx.contractAddress,
                 amount: BigInt(open.data.amount.toString()),
                 price: BigInt(open.data.price.toString()),
-                user: open.data.user.Address?.bits,
+                user: open.data.user.Address?.bits as string,
                 status: OrderStatus.Active,
                 orderType: open.data.order_type as unknown as OrderType,
                 initialAmount: BigInt(open.data.amount.toString()),
@@ -94,7 +94,7 @@ Object.values(marketsConfig).forEach(config => {
                 initialTimestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
             })
             await ctx.store.upsert(order);
-            console.log("OPEN ORDER", open.data.order_id);
+            // console.log("OPEN ORDER", open.data.order_id);
         })
         .onLogTradeOrderEvent(async (trade, ctx: any) => {
             tradeOrderCounter.add(ctx, 1);
@@ -164,8 +164,8 @@ Object.values(marketsConfig).forEach(config => {
                 price: parseFloat(BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).toString()),
                 amount: parseFloat(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)).toString()),
                 volume: eventVolume.toNumber(),
-                seller: trade.data.order_seller.Address?.bits,
-                buyer: trade.data.order_buyer.Address?.bits,
+                seller: trade.data.order_seller.Address?.bits as string,
+                buyer: trade.data.order_buyer.Address?.bits as string,
             });
             await ctx.store.upsert(tradeEvent);
         })
@@ -198,6 +198,7 @@ Object.values(marketsConfig).forEach(config => {
             const marketActiveOrders = orders.filter(order => order.market === ctx.contractAddress && order.status === "Active");
 
             const historicalBasePrices = await getPricesLastWeek(config.baseTokenSymbol, ctx);
+            console.log("historicalBasePrices:", historicalBasePrices);
 
             const basePriceChanges = historicalBasePrices.map((price, index, arr) => {
                 if (index === 0) return 0;
@@ -209,7 +210,7 @@ Object.values(marketsConfig).forEach(config => {
 
             const lowerLimit = baseTokenPrice * (1 - percentile / 100);
             const upperLimit = baseTokenPrice * (1 + percentile / 100);
-            console.log("limits:", baseTokenPrice, percentile, lowerLimit, upperLimit);
+            console.log("limits:", baseTokenPrice, percentile, lowerLimit, upperLimit, ctx.contractAddress);
 
             const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
                 if (!map[order.user]) {
@@ -335,26 +336,26 @@ Object.values(marketsConfig).forEach(config => {
             }
 
             const dailyVolume = new DailyVolume({
-                id: ctx.block?.id,
+                id: ctx.block?.id as string,
                 timestamp: currentTimestamp,
                 volume: dailyTradeVolume.toNumber(),
             });
 
             const dailyMarketVolume = new DailyMarketVolume({
-                id: ctx.block?.id,
+                id: ctx.block?.id as string,
                 market: ctx.contractAddress,
                 timestamp: currentTimestamp,
                 volume: dailyMarketTradeVolume.toNumber(),
             });
 
             const totalVolume = new TotalVolume({
-                id: ctx.block?.id,
+                id: ctx.block?.id as string,
                 timestamp: currentTimestamp,
                 volume: totalTradeVolume.toNumber(),
             });
 
             const totalMarketVolume = new TotalMarketVolume({
-                id: ctx.block?.id,
+                id: ctx.block?.id as string,
                 market: ctx.contractAddress,
                 timestamp: currentTimestamp,
                 volume: totalMarketTradeVolume.toNumber(),

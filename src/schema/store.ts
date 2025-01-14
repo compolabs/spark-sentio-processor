@@ -17,6 +17,26 @@ export enum OrderType {
 
 
 
+
+interface BalanceConstructorInput {
+  id: ID;
+  user: String;
+  market: String;
+  liquidBaseAmount: BigInt;
+  liquidQuoteAmount: BigInt;
+  lockedBaseAmount: BigInt;
+  lockedQuoteAmount: BigInt;
+  txCount: Int;
+  depositCount: Int;
+  withdrawCount: Int;
+  openOrderCount: Int;
+  cancelOrderCount: Int;
+  tradeCount: Int;
+  baseDecimalAmount: Float;
+  quoteDecimalAmount: Float;
+  tvl: Float;
+  timestamp: Int;
+}
 @Entity("Balance")
 export class Balance extends AbstractEntity  {
 
@@ -87,9 +107,15 @@ export class Balance extends AbstractEntity  {
 	@Required
 	@Column("Int")
 	timestamp: Int
-  constructor(data: Partial<Balance>) {super()}
+  constructor(data: BalanceConstructorInput) {super()}
 }
 
+
+interface TotalVolumeConstructorInput {
+  id: ID;
+  timestamp: Int;
+  volume: Float;
+}
 @Entity("TotalVolume")
 export class TotalVolume extends AbstractEntity  {
 
@@ -104,9 +130,16 @@ export class TotalVolume extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	volume: Float
-  constructor(data: Partial<TotalVolume>) {super()}
+  constructor(data: TotalVolumeConstructorInput) {super()}
 }
 
+
+interface TotalMarketVolumeConstructorInput {
+  id: ID;
+  market: String;
+  timestamp: Int;
+  volume: Float;
+}
 @Entity("TotalMarketVolume")
 export class TotalMarketVolume extends AbstractEntity  {
 
@@ -125,9 +158,20 @@ export class TotalMarketVolume extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	volume: Float
-  constructor(data: Partial<TotalMarketVolume>) {super()}
+  constructor(data: TotalMarketVolumeConstructorInput) {super()}
 }
 
+
+interface TradeEventConstructorInput {
+  id: ID;
+  market: String;
+  timestamp: Int;
+  volume: Float;
+  seller: String;
+  buyer: String;
+  price: Float;
+  amount: Float;
+}
 @Entity("TradeEvent")
 export class TradeEvent extends AbstractEntity  {
 
@@ -162,9 +206,15 @@ export class TradeEvent extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	amount: Float
-  constructor(data: Partial<TradeEvent>) {super()}
+  constructor(data: TradeEventConstructorInput) {super()}
 }
 
+
+interface DailyVolumeConstructorInput {
+  id: ID;
+  timestamp: Int;
+  volume: Float;
+}
 @Entity("DailyVolume")
 export class DailyVolume extends AbstractEntity  {
 
@@ -179,9 +229,16 @@ export class DailyVolume extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	volume: Float
-  constructor(data: Partial<DailyVolume>) {super()}
+  constructor(data: DailyVolumeConstructorInput) {super()}
 }
 
+
+interface DailyMarketVolumeConstructorInput {
+  id: ID;
+  market: String;
+  timestamp: Int;
+  volume: Float;
+}
 @Entity("DailyMarketVolume")
 export class DailyMarketVolume extends AbstractEntity  {
 
@@ -200,9 +257,21 @@ export class DailyMarketVolume extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	volume: Float
-  constructor(data: Partial<DailyMarketVolume>) {super()}
+  constructor(data: DailyMarketVolumeConstructorInput) {super()}
 }
 
+
+interface UserScoreSnapshotConstructorInput {
+  id: ID;
+  timestamp: Int;
+  block_date: String;
+  chain_id: Int;
+  block_number: Int;
+  user_address: String;
+  pool_address: String;
+  total_value_locked_score: Float;
+  market_depth_score?: Int;
+}
 @Entity("UserScoreSnapshot")
 export class UserScoreSnapshot extends AbstractEntity  {
 
@@ -240,9 +309,25 @@ export class UserScoreSnapshot extends AbstractEntity  {
 
 	@Column("Int")
 	market_depth_score?: Int
-  constructor(data: Partial<UserScoreSnapshot>) {super()}
+  constructor(data: UserScoreSnapshotConstructorInput) {super()}
 }
 
+
+interface PoolsConstructorInput {
+  id: ID;
+  chain_id: Int;
+  creation_block_number: Int;
+  timestamp: Int;
+  pool_address: String;
+  lp_token_address: String;
+  lp_token_symbol: String;
+  token_address: String;
+  token_symbol: String;
+  token_decimals: String;
+  token_index: Int;
+  fee_rate: Float;
+  dex_type: String;
+}
 @Entity("Pools")
 export class Pools extends AbstractEntity  {
 
@@ -297,9 +382,22 @@ export class Pools extends AbstractEntity  {
 	@Required
 	@Column("String")
 	dex_type: String
-  constructor(data: Partial<Pools>) {super()}
+  constructor(data: PoolsConstructorInput) {super()}
 }
 
+
+interface OrderConstructorInput {
+  id: ID;
+  amount: BigInt;
+  market: String;
+  orderType: OrderType;
+  price: BigInt;
+  user: String;
+  status: OrderStatus;
+  initialAmount: BigInt;
+  timestamp: Int;
+  initialTimestamp: Int;
+}
 @Entity("Order")
 export class Order extends AbstractEntity  {
 
@@ -342,7 +440,7 @@ export class Order extends AbstractEntity  {
 	@Required
 	@Column("Int")
 	initialTimestamp: Int
-  constructor(data: Partial<Order>) {super()}
+  constructor(data: OrderConstructorInput) {super()}
 }
 
 
