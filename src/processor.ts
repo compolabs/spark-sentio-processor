@@ -1,21 +1,16 @@
 import { SparkMarketProcessor } from "./types/fuel/SparkMarketProcessor.js";
 import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
-import crypto from "crypto";
 import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
-import { calculatePercentile, getPricesLastWeek, updateBalance } from "./utils.js";
-
+import { calculatePercentile, getHash, getPricesLastWeek, updateBalance } from "./utils.js";
 import { GLOBAL_CONFIG } from "@sentio/runtime"
 
 GLOBAL_CONFIG.execution = {
     sequential: true,
 }
-export const getHash = (data: string) => {
-    return crypto.createHash("sha256").update(data).digest("hex");
-};
 
 const depositCounter = Counter.register("deposit");
 const withdrawCounter = Counter.register("withdraw");
@@ -222,7 +217,7 @@ Object.values(marketsConfig).forEach(config => {
 
             for (const user in userOrdersMap) {
                 const userOrders = userOrdersMap[user];
-                console.log("userOrders", userOrders)
+                // console.log("userOrders", userOrders)
 
                 // if (userOrders.length === 0) continue;
 
@@ -262,7 +257,6 @@ Object.values(marketsConfig).forEach(config => {
                     market_depth_score: undefined,
                 });
                 await ctx.store.upsert(snapshot);
-
             }
 
             const pool = new Pools({

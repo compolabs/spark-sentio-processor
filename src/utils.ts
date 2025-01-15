@@ -3,6 +3,11 @@ import { LogLevel } from "@sentio/sdk";
 import { marketsConfig } from "./marketsConfig.js";
 import { Balance } from "./schema/store.js";
 import { getPriceBySymbol } from "@sentio/sdk/utils";
+import crypto from "crypto";
+
+export const getHash = (data: string) => {
+	return crypto.createHash("sha256").update(data).digest("hex");
+};
 
 export async function updateBalance(
 	event: any,
