@@ -26,15 +26,8 @@ interface BalanceConstructorInput {
   liquidQuoteAmount: BigInt;
   lockedBaseAmount: BigInt;
   lockedQuoteAmount: BigInt;
-  txCount: Int;
-  depositCount: Int;
-  withdrawCount: Int;
-  openOrderCount: Int;
-  cancelOrderCount: Int;
-  tradeCount: Int;
-  baseDecimalAmount: Float;
-  quoteDecimalAmount: Float;
   tvl: Float;
+  tvlOrders: Float;
   timestamp: Int;
 }
 @Entity("Balance")
@@ -69,40 +62,12 @@ export class Balance extends AbstractEntity  {
 	lockedQuoteAmount: BigInt
 
 	@Required
-	@Column("Int")
-	txCount: Int
-
-	@Required
-	@Column("Int")
-	depositCount: Int
-
-	@Required
-	@Column("Int")
-	withdrawCount: Int
-
-	@Required
-	@Column("Int")
-	openOrderCount: Int
-
-	@Required
-	@Column("Int")
-	cancelOrderCount: Int
-
-	@Required
-	@Column("Int")
-	tradeCount: Int
-
-	@Required
-	@Column("Float")
-	baseDecimalAmount: Float
-
-	@Required
-	@Column("Float")
-	quoteDecimalAmount: Float
-
-	@Required
 	@Column("Float")
 	tvl: Float
+
+	@Required
+	@Column("Float")
+	tvlOrders: Float
 
 	@Required
 	@Column("Int")
@@ -452,18 +417,9 @@ const source = `type Balance @entity {
   liquidQuoteAmount: BigInt!
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
-  
-  txCount: Int! 
-  depositCount: Int! 
-  withdrawCount: Int! 
-  openOrderCount: Int! 
-  cancelOrderCount: Int! 
-  tradeCount: Int! 
-  
-  baseDecimalAmount: Float!
-  quoteDecimalAmount: Float!
 
   tvl: Float!
+  tvlOrders: Float!
   timestamp: Int!
 }
 

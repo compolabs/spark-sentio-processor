@@ -6,18 +6,9 @@ type Balance @entity {
   liquidQuoteAmount: BigInt!
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
-  
-  txCount: Int! 
-  depositCount: Int! 
-  withdrawCount: Int! 
-  openOrderCount: Int! 
-  cancelOrderCount: Int! 
-  tradeCount: Int! 
-  
-  baseDecimalAmount: Float!
-  quoteDecimalAmount: Float!
 
   tvl: Float!
+  tvlOrders: Float!
   timestamp: Int!
 }
 

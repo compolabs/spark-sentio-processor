@@ -1,5 +1,4 @@
 import { BigDecimal } from "@sentio/sdk";
-import { LogLevel } from "@sentio/sdk";
 import { marketsConfig } from "./marketsConfig.js";
 import { Balance } from "./schema/store.js";
 import { getPriceBySymbol } from "@sentio/sdk/utils";
@@ -10,8 +9,8 @@ export const getHash = (data: string) => {
 };
 
 export async function updateBalance(
+	config: any,
 	event: any,
-	eventType: "deposit" | "withdraw" | "withdrawTo" | "open" | "cancel" | "trade",
 	ctx: any,
 	balance: Balance | undefined,
 	balanceId: string,
@@ -20,21 +19,29 @@ export async function updateBalance(
 	lockedBaseAmount: BigInt,
 	lockedQuoteAmount: BigInt,
 ): Promise<void> {
-	const marketConfig = Object.values(marketsConfig).find(market => market.market === ctx.contractAddress);
-
-	if (!marketConfig) {
-		ctx.eventLogger.emit('MarketConfigNotFound', {
-			severity: LogLevel.ERROR,
-			message: `Market config not found for market address ${ctx.contractAddress}`,
-		});
-		return;
-	}
+	let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
+	let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
 
 	const baseBalanceAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString());
 	const quoteBalanceAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString());
 
-	const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
-	const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+	const baseInOrders = BigInt(lockedBaseAmount.toString());
+	const quoteInOrders = BigInt(lockedQuoteAmount.toString());
+
+	const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+	const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
+
+	const baseInOrdersBigDecimal = BigDecimal(baseInOrders.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+	const quoteInOrdersBigDecimal = BigDecimal(quoteInOrders.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
+
+	const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
+	const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
+
+	const balanceBaseOrdersTVL = baseInOrdersBigDecimal.multipliedBy(baseTokenPrice);
+	const balanceQuoteOrdersTVL = quoteInOrdersBigDecimal.multipliedBy(quoteTokenPrice);
+
+	const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
+	const balanceOrdersTVL = balanceBaseOrdersTVL.plus(balanceQuoteOrdersTVL).toNumber();
 
 	if (balance) {
 		balance.liquidBaseAmount = BigInt(liquidBaseAmount.toString());
@@ -42,21 +49,8 @@ export async function updateBalance(
 		balance.lockedBaseAmount = BigInt(lockedBaseAmount.toString());
 		balance.lockedQuoteAmount = BigInt(lockedQuoteAmount.toString());
 		balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
-		balance.baseDecimalAmount = baseBalanceAmountBigDecimal.toNumber();
-		balance.quoteDecimalAmount = quoteBalanceAmountBigDecimal.toNumber();
-		balance.txCount++;
-		if (eventType === 'deposit') {
-			balance.depositCount++;
-		} else if (eventType === 'withdraw') {
-			balance.withdrawCount++;
-		} else if (eventType === 'open') {
-			balance.openOrderCount++;
-		} else if (eventType === 'cancel') {
-			balance.cancelOrderCount++;
-		} else if (eventType === 'trade') {
-			balance.tradeCount++;
-		}
-
+		balance.tvl = balanceTVL;
+		balance.tvlOrders = balanceOrdersTVL;
 	} else {
 		balance = new Balance({
 			id: balanceId,
@@ -66,15 +60,8 @@ export async function updateBalance(
 			liquidQuoteAmount: BigInt(liquidQuoteAmount.toString()),
 			lockedBaseAmount: BigInt(lockedBaseAmount.toString()),
 			lockedQuoteAmount: BigInt(lockedQuoteAmount.toString()),
-			baseDecimalAmount: 0,
-			quoteDecimalAmount: 0,
 			tvl: 0,
-			txCount: 1,
-			depositCount: eventType === 'deposit' ? 1 : 0,
-			withdrawCount: eventType === 'withdraw' ? 1 : 0,
-			openOrderCount: eventType === 'open' ? 1 : 0,
-			cancelOrderCount: eventType === 'cancel' ? 1 : 0,
-			tradeCount: eventType === 'trade' ? 1 : 0,
+			tvlOrders: 0,
 			timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
 		});
 	}

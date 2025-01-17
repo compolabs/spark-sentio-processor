@@ -19,6 +19,16 @@ const openOrderCounter = Counter.register("openOrder");
 const cancelOrderCounter = Counter.register("cancelOrder");
 const tradeOrderCounter = Counter.register("tradeOrder");
 const totalEventsCounter = Counter.register("totalEvents");
+
+const totalBaseDeposited = Counter.register("totalBaseDeposited");
+const totalQuoteDeposited = Counter.register("totalQuoteDeposited");
+
+const totalBaseWithdrawn = Counter.register("totalBaseWithdrawn");
+const totalQuoteWithdrawn = Counter.register("totalQuoteWithdrawn");
+
+const totalBaseWithdrawnTo = Counter.register("totalBaseWithdrawnTo");
+const totalQuoteWithdrawnTo = Counter.register("totalQuoteWithdrawnTo");
+
 const shortCounter = Counter.register("shorts");
 const longCounter = Counter.register("longs");
 
@@ -27,9 +37,18 @@ Object.values(marketsConfig).forEach(config => {
         address: config.market,
         chainId: FuelNetwork.MAIN_NET,
     })
-        .onLogDepositEvent(async (deposit, ctx) => {
-            depositCounter.add(ctx, 1);
-            totalEventsCounter.add(ctx, 1);
+    .onLogDepositEvent(async (deposit, ctx) => {
+        depositCounter.add(ctx, 1);
+        totalEventsCounter.add(ctx, 1);
+
+        const price = deposit.data.asset.bits === config.baseToken
+            ? await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice
+            : await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
+        console.log("deposit price", deposit.data.asset.bits, price)
+        deposit.data.asset.bits === config.baseToken
+            ? totalBaseDeposited.add(ctx, BigDecimal(deposit.data.amount.toString()).div(BigDecimal(10).pow(config.baseDecimal)).multipliedBy(price))
+            : totalQuoteDeposited.add(ctx,BigDecimal(deposit.data.amount.toString()).div(BigDecimal(10).pow(config.quoteDecimal)).multipliedBy(price))
+
             const balanceId = getHash(`${deposit.data.user.Address?.bits}-${ctx.contractAddress}`);
             let balance = await ctx.store.get(Balance, balanceId);
 
@@ -37,11 +56,20 @@ Object.values(marketsConfig).forEach(config => {
             const liquidQuoteAmount = BigInt(deposit.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(deposit.data.account.locked.base.toString());
             const lockedQuoteAmount = BigInt(deposit.data.account.locked.quote.toString());
-            await updateBalance(deposit, "deposit", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
+            await updateBalance(config, deposit, ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onLogWithdrawEvent(async (withdraw, ctx) => {
             withdrawCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
+
+            const price = withdraw.data.asset.bits === config.baseToken
+                ? await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice
+                : await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
+           
+            withdraw.data.asset.bits === config.baseToken
+                ? totalBaseWithdrawn.add(ctx, BigDecimal(withdraw.data.amount.toString()).div(BigDecimal(10).pow(config.baseDecimal)).multipliedBy(price))
+                : totalQuoteWithdrawn.add(ctx, BigDecimal(withdraw.data.amount.toString()).div(BigDecimal(10).pow(config.quoteDecimal)).multipliedBy(price))
+            
             const balanceId = getHash(`${withdraw.data.user.Address?.bits}-${ctx.contractAddress}`);
             let balance = await ctx.store.get(Balance, balanceId);
 
@@ -49,19 +77,28 @@ Object.values(marketsConfig).forEach(config => {
             const liquidQuoteAmount = BigInt(withdraw.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(withdraw.data.account.locked.base.toString());
             const lockedQuoteAmount = BigInt(withdraw.data.account.locked.quote.toString());
-            await updateBalance(withdraw, "withdraw", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
+            await updateBalance(config, withdraw, ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onLogWithdrawToMarketEvent(async (withdrawTo, ctx) => {
             withdrawToMarketCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
+            const price = withdrawTo.data.asset.bits === config.baseToken
+                ? await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice
+                : await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
+            
+            withdrawTo.data.asset.bits === config.baseToken
+                ? totalBaseWithdrawnTo.add(ctx, BigDecimal(withdrawTo.data.amount.toString()).div(BigDecimal(10).pow(config.baseDecimal)).multipliedBy(price))
+                : totalQuoteWithdrawnTo.add(ctx, BigDecimal(withdrawTo.data.amount.toString()).div(BigDecimal(10).pow(config.quoteDecimal)).multipliedBy(price))
+            
             const balanceId = getHash(`${withdrawTo.data.user.Address?.bits}-${ctx.contractAddress}`);
+            
             let balance = await ctx.store.get(Balance, balanceId);
 
             const liquidBaseAmount = BigInt(withdrawTo.data.account.liquid.base.toString());
             const liquidQuoteAmount = BigInt(withdrawTo.data.account.liquid.quote.toString());
             const lockedBaseAmount = BigInt(withdrawTo.data.account.locked.base.toString());
             const lockedQuoteAmount = BigInt(withdrawTo.data.account.locked.quote.toString());
-            await updateBalance(withdrawTo, "withdrawTo", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
+            await updateBalance(config, withdrawTo, ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onLogOpenOrderEvent(async (open, ctx: any) => {
             openOrderCounter.add(ctx, 1);
@@ -74,7 +111,7 @@ Object.values(marketsConfig).forEach(config => {
             const liquidQuoteAmount = BigInt(open.data.balance.liquid.quote.toString());
             const lockedBaseAmount = BigInt(open.data.balance.locked.base.toString());
             const lockedQuoteAmount = BigInt(open.data.balance.locked.quote.toString());
-            await updateBalance(open, "open", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
+            await updateBalance(config, open, ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
             
             const order = new Order({
                 id: open.data.order_id,
@@ -148,8 +185,8 @@ Object.values(marketsConfig).forEach(config => {
                 console.log("NO BUY ORDER FOR TRADE", trade.data.base_buy_order_id);
             }
             
-            await updateBalance(trade, "trade", ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
-            await updateBalance(trade, "trade", ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
+            await updateBalance(config, trade, ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
+            await updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
             
             const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
             const tradeEvent = new TradeEvent({
@@ -184,7 +221,7 @@ Object.values(marketsConfig).forEach(config => {
             const lockedBaseAmount = BigInt(cancel.data.balance.locked.base.toString());
             const lockedQuoteAmount = BigInt(cancel.data.balance.locked.quote.toString());
 
-            await updateBalance(cancel, "cancel", ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
+            await updateBalance(config, cancel, ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onTimeInterval(async (block, ctx) => {
             const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
@@ -281,6 +318,8 @@ Object.values(marketsConfig).forEach(config => {
             const marketBalances = balances.filter(balance => balance.market === ctx.contractAddress);
 
             let TVL = BigDecimal(0);
+            let TVLInOrders = BigDecimal(0);
+            
             let quoteTVL = BigDecimal(0);
             let baseTVL = BigDecimal(0);
 
@@ -361,50 +400,52 @@ Object.values(marketsConfig).forEach(config => {
             await ctx.store.upsert(dailyMarketVolume);
 
             for (const balance of marketBalances) {
-                const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
+                // const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
 
-                if (!marketConfig) {
-                    ctx.eventLogger.emit('MarketConfigNotFound', {
-                        severity: LogLevel.ERROR,
-                        message: `Market config not found for market address ${balance.market}`,
-                    });
-                    continue;
-                }
+                // if (!marketConfig) {
+                //     ctx.eventLogger.emit('MarketConfigNotFound', {
+                //         severity: LogLevel.ERROR,
+                //         message: `Market config not found for market address ${balance.market}`,
+                //     });
+                //     continue;
+                // }
 
-                let baseTokenPrice = await getPriceBySymbol(marketConfig.baseTokenSymbol, new Date(ctx.timestamp));
-                let quoteTokenPrice = await getPriceBySymbol(marketConfig.quoteTokenSymbol, new Date(ctx.timestamp));
+                let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp));
+                let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp));
                 if (!baseTokenPrice) {
-                    baseTokenPrice = marketConfig.defaultBasePrice
+                    baseTokenPrice = config.defaultBasePrice
                 }
                 if (!quoteTokenPrice) {
-                    quoteTokenPrice = marketConfig.defaultQuotePrice
+                    quoteTokenPrice = config.defaultQuotePrice
                 }
 
                 const baseBalanceAmount = balance.liquidBaseAmount + balance.lockedBaseAmount;
                 const quoteBalanceAmount = balance.liquidQuoteAmount + balance.lockedQuoteAmount;
 
-                const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
-                const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+                const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+                const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
 
 
-                const lockedBaseAmount = BigDecimal(balance.lockedBaseAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
-                const lockedQuoteAmount = BigDecimal(balance.lockedQuoteAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+                const lockedBaseAmount = BigDecimal(balance.lockedBaseAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+                const lockedQuoteAmount = BigDecimal(balance.lockedQuoteAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
 
-                const liquidBaseAmount = BigDecimal(balance.liquidBaseAmount.toString()).div(BigDecimal(10).pow(marketConfig.baseDecimal));
-                const liquidQuoteAmount = BigDecimal(balance.liquidQuoteAmount.toString()).div(BigDecimal(10).pow(marketConfig.quoteDecimal));
+                const liquidBaseAmount = BigDecimal(balance.liquidBaseAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+                const liquidQuoteAmount = BigDecimal(balance.liquidQuoteAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
 
                 const balanceLockedTVL = lockedBaseAmount.multipliedBy(baseTokenPrice).plus(lockedQuoteAmount.multipliedBy(quoteTokenPrice));
                 const balanceLiquidTVL = liquidBaseAmount.multipliedBy(baseTokenPrice).plus(liquidQuoteAmount.multipliedBy(quoteTokenPrice));
 
                 const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
                 const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
-                const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
+                // const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
 
-                balance.tvl = balanceTVL;
-                balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
-                await ctx.store.upsert(balance);
+                // balance.tvl = balanceTVL;
+                // balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+                // await ctx.store.upsert(balance);
 
-                TVL = TVL.plus(balanceTVL);
+                TVL = TVL.plus(balance.tvl);
+                TVLInOrders = TVLInOrders.plus(balance.tvlOrders);
+
                 quoteTVL = quoteTVL.plus(balanceQuoteTVL);
                 baseTVL = baseTVL.plus(balanceBaseTVL);
 
@@ -416,6 +457,7 @@ Object.values(marketsConfig).forEach(config => {
                 baseAmountOnOrders = baseAmountOnOrders.plus(lockedBaseAmount)
 
                 ctx.meter.Gauge("total_tvl").record(TVL)
+                ctx.meter.Gauge("total_orders_tvl").record(TVLInOrders)
                 ctx.meter.Gauge("total_quote_tvl").record(quoteTVL)
                 ctx.meter.Gauge("total_base_tvl").record(baseTVL)
                 ctx.meter.Gauge("total_locked_tvl").record(lockedTVL)
