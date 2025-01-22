@@ -26,8 +26,8 @@ interface BalanceConstructorInput {
   liquidQuoteAmount: BigInt;
   lockedBaseAmount: BigInt;
   lockedQuoteAmount: BigInt;
-  tvl: Float;
-  tvlOrders: Float;
+  baseAmount: BigInt;
+  quoteAmount: BigInt;
   timestamp: Int;
 }
 @Entity("Balance")
@@ -62,17 +62,18 @@ export class Balance extends AbstractEntity  {
 	lockedQuoteAmount: BigInt
 
 	@Required
-	@Column("Float")
-	tvl: Float
+	@Column("BigInt")
+	baseAmount: BigInt
 
 	@Required
-	@Column("Float")
-	tvlOrders: Float
+	@Column("BigInt")
+	quoteAmount: BigInt
 
 	@Required
 	@Column("Int")
 	timestamp: Int
   constructor(data: BalanceConstructorInput) {super()}
+  
 }
 
 
@@ -96,6 +97,7 @@ export class TotalVolume extends AbstractEntity  {
 	@Column("Float")
 	volume: Float
   constructor(data: TotalVolumeConstructorInput) {super()}
+  
 }
 
 
@@ -124,6 +126,7 @@ export class TotalMarketVolume extends AbstractEntity  {
 	@Column("Float")
 	volume: Float
   constructor(data: TotalMarketVolumeConstructorInput) {super()}
+  
 }
 
 
@@ -136,6 +139,7 @@ interface TradeEventConstructorInput {
   buyer: String;
   price: Float;
   amount: Float;
+  date: String;
 }
 @Entity("TradeEvent")
 export class TradeEvent extends AbstractEntity  {
@@ -171,7 +175,12 @@ export class TradeEvent extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	amount: Float
+
+	@Required
+	@Column("String")
+	date: String
   constructor(data: TradeEventConstructorInput) {super()}
+  
 }
 
 
@@ -195,6 +204,7 @@ export class DailyVolume extends AbstractEntity  {
 	@Column("Float")
 	volume: Float
   constructor(data: DailyVolumeConstructorInput) {super()}
+  
 }
 
 
@@ -223,6 +233,7 @@ export class DailyMarketVolume extends AbstractEntity  {
 	@Column("Float")
 	volume: Float
   constructor(data: DailyMarketVolumeConstructorInput) {super()}
+  
 }
 
 
@@ -275,6 +286,7 @@ export class UserScoreSnapshot extends AbstractEntity  {
 	@Column("Int")
 	market_depth_score?: Int
   constructor(data: UserScoreSnapshotConstructorInput) {super()}
+  
 }
 
 
@@ -348,6 +360,7 @@ export class Pools extends AbstractEntity  {
 	@Column("String")
 	dex_type: String
   constructor(data: PoolsConstructorInput) {super()}
+  
 }
 
 
@@ -406,6 +419,7 @@ export class Order extends AbstractEntity  {
 	@Column("Int")
 	initialTimestamp: Int
   constructor(data: OrderConstructorInput) {super()}
+  
 }
 
 
@@ -418,8 +432,11 @@ const source = `type Balance @entity {
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
 
-  tvl: Float!
-  tvlOrders: Float!
+  baseAmount: BigInt!
+  quoteAmount: BigInt!
+
+  # tvl: Float!
+  # tvlOrders: Float!
   timestamp: Int!
 }
 
@@ -445,6 +462,7 @@ type TradeEvent @entity {
   buyer: String!
   price: Float!
   amount: Float!
+  date: String!
 }
 
 type DailyVolume @entity {

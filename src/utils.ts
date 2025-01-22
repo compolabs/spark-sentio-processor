@@ -1,5 +1,5 @@
 import { BigDecimal } from "@sentio/sdk";
-import { marketsConfig } from "./marketsConfig.js";
+// import { marketsConfig } from "./marketsConfig.js";
 import { Balance } from "./schema/store.js";
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import crypto from "crypto";
@@ -19,38 +19,38 @@ export async function updateBalance(
 	lockedBaseAmount: BigInt,
 	lockedQuoteAmount: BigInt,
 ): Promise<void> {
-	let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
-	let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
+	// let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
+	// let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
 
-	const baseBalanceAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString());
-	const quoteBalanceAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString());
+	// const baseBalanceAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString());
+	// const quoteBalanceAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString());
 
-	const baseInOrders = BigInt(lockedBaseAmount.toString());
-	const quoteInOrders = BigInt(lockedQuoteAmount.toString());
+	// const baseInOrders = BigInt(lockedBaseAmount.toString());
+	// const quoteInOrders = BigInt(lockedQuoteAmount.toString());
 
-	const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
-	const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
+	// const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+	// const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
 
-	const baseInOrdersBigDecimal = BigDecimal(baseInOrders.toString()).div(BigDecimal(10).pow(config.baseDecimal));
-	const quoteInOrdersBigDecimal = BigDecimal(quoteInOrders.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
+	// const baseInOrdersBigDecimal = BigDecimal(baseInOrders.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+	// const quoteInOrdersBigDecimal = BigDecimal(quoteInOrders.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
 
-	const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
-	const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
+	// const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
+	// const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
 
-	const balanceBaseOrdersTVL = baseInOrdersBigDecimal.multipliedBy(baseTokenPrice);
-	const balanceQuoteOrdersTVL = quoteInOrdersBigDecimal.multipliedBy(quoteTokenPrice);
+	// const balanceBaseOrdersTVL = baseInOrdersBigDecimal.multipliedBy(baseTokenPrice);
+	// const balanceQuoteOrdersTVL = quoteInOrdersBigDecimal.multipliedBy(quoteTokenPrice);
 
-	const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
-	const balanceOrdersTVL = balanceBaseOrdersTVL.plus(balanceQuoteOrdersTVL).toNumber();
+	// const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
+	// const balanceOrdersTVL = balanceBaseOrdersTVL.plus(balanceQuoteOrdersTVL).toNumber();
 
 	if (balance) {
-		balance.liquidBaseAmount = BigInt(liquidBaseAmount.toString());
-		balance.liquidQuoteAmount = BigInt(liquidQuoteAmount.toString());
-		balance.lockedBaseAmount = BigInt(lockedBaseAmount.toString());
-		balance.lockedQuoteAmount = BigInt(lockedQuoteAmount.toString());
-		balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
-		balance.tvl = balanceTVL;
-		balance.tvlOrders = balanceOrdersTVL;
+		balance.liquidBaseAmount = BigInt(liquidBaseAmount.toString())
+		balance.liquidQuoteAmount = BigInt(liquidQuoteAmount.toString())
+		balance.lockedBaseAmount = BigInt(lockedBaseAmount.toString())
+		balance.lockedQuoteAmount = BigInt(lockedQuoteAmount.toString())
+		balance.baseAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString())
+		balance.quoteAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString())
+		balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
 	} else {
 		balance = new Balance({
 			id: balanceId,
@@ -60,12 +60,11 @@ export async function updateBalance(
 			liquidQuoteAmount: BigInt(liquidQuoteAmount.toString()),
 			lockedBaseAmount: BigInt(lockedBaseAmount.toString()),
 			lockedQuoteAmount: BigInt(lockedQuoteAmount.toString()),
-			tvl: 0,
-			tvlOrders: 0,
+			baseAmount: BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString()),
+			quoteAmount: BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString()),
 			timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
 		});
 	}
-
 	await ctx.store.upsert(balance);
 }
 
@@ -73,22 +72,22 @@ export async function getPricesLastWeek(symbol: string, ctx: any): Promise<numbe
 	const prices: number[] = [];
 	const currentTimestamp = ctx.timestamp;
 
-	for (let i = 0; i < 7 * 24; i++) {
+	const pricePromises = Array.from({ length: 7 * 24 }).map((_, i) => {
 		const timestampForHourAgo = currentTimestamp - i * 3600000;
-		const price = await getPriceBySymbol(symbol, new Date(timestampForHourAgo));
-		// console.log("price", price, new Date(timestampForHourAgo), timestampForHourAgo);
-		if (price !== undefined) {
-			prices.push(price);
-		}
-	}
-	console.log("prices",prices, ctx.contractAddress)
+		return getPriceBySymbol(symbol, new Date(timestampForHourAgo)).then(price => {
+			price !== undefined ? prices.push(price) : null;
+		});
+	});
+	await Promise.all(pricePromises);
+	console.log("prices", prices, ctx.contractAddress);
 	return prices;
 }
+
 
 export function calculatePercentile(values: number[], percentile: number, ctx: any): number {
 	values.sort((a, b) => a - b);
 	const index = Math.floor((percentile / 100) * values.length);
 	console.log("values", values, ctx.contractAddress)
-	console.log("index", values[index], values.length, ctx.contractAddress)
+	console.log("index", values[index], ctx.contractAddress)
 	return values[index];
 }

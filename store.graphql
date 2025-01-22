@@ -7,8 +7,11 @@ type Balance @entity {
   lockedBaseAmount: BigInt!
   lockedQuoteAmount: BigInt!
 
-  tvl: Float!
-  tvlOrders: Float!
+  baseAmount: BigInt!
+  quoteAmount: BigInt!
+
+  # tvl: Float!
+  # tvlOrders: Float!
   timestamp: Int!
 }
 
@@ -34,6 +37,7 @@ type TradeEvent @entity {
   buyer: String!
   price: Float!
   amount: Float!
+  date: String!
 }
 
 type DailyVolume @entity {

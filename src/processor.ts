@@ -1,6 +1,6 @@
 import { SparkMarketProcessor } from "./types/fuel/SparkMarketProcessor.js";
 import { FuelNetwork } from "@sentio/sdk/fuel";
-import { BigDecimal, Counter, LogLevel } from "@sentio/sdk";
+import { BigDecimal, Counter } from "@sentio/sdk";
 import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
@@ -44,7 +44,7 @@ Object.values(marketsConfig).forEach(config => {
         const price = deposit.data.asset.bits === config.baseToken
             ? await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice
             : await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
-        console.log("deposit price", deposit.data.asset.bits, price)
+        // console.log("deposit price", deposit.data.asset.bits, price)
         deposit.data.asset.bits === config.baseToken
             ? totalBaseDeposited.add(ctx, BigDecimal(deposit.data.amount.toString()).div(BigDecimal(10).pow(config.baseDecimal)).multipliedBy(price))
             : totalQuoteDeposited.add(ctx,BigDecimal(deposit.data.amount.toString()).div(BigDecimal(10).pow(config.quoteDecimal)).multipliedBy(price))
@@ -166,6 +166,11 @@ Object.values(marketsConfig).forEach(config => {
                 await ctx.store.upsert(sell_order);
             } else {
                 console.log("NO SELL ORDER FOR TRADE", trade.data.base_sell_order_id);
+                ctx.eventLogger.emit("NO SELL ORDER FOR TRADE", {
+                    market: ctx.contractAddress,
+                    config: config.market,
+                    orderId: trade.data.base_sell_order_id,
+                })
             }
             
             if (buy_order) {
@@ -183,6 +188,11 @@ Object.values(marketsConfig).forEach(config => {
                 await ctx.store.upsert(buy_order);
             } else {
                 console.log("NO BUY ORDER FOR TRADE", trade.data.base_buy_order_id);
+                ctx.eventLogger.emit("NO BUY ORDER FOR TRADE", {
+                    market: ctx.contractAddress,
+                    config: config.market,
+                    orderId: trade.data.base_buy_order_id,
+                })
             }
             
             await updateBalance(config, trade, ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
@@ -198,6 +208,7 @@ Object.values(marketsConfig).forEach(config => {
                 volume: eventVolume.toNumber(),
                 seller: trade.data.order_seller.Address?.bits as string,
                 buyer: trade.data.order_buyer.Address?.bits as string,
+                date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
             });
             await ctx.store.upsert(tradeEvent);
         })
@@ -214,6 +225,11 @@ Object.values(marketsConfig).forEach(config => {
                 await ctx.store.upsert(order)
             } else {
                 console.log("NO ORDER FOR CANCEL", cancel.data.order_id);
+                ctx.eventLogger.emit("NO ORDER FOR CANCEL", {
+                    market: ctx.contractAddress,
+                    config: config.market,
+                    orderId: cancel.data.order_id,
+                })
             }
 
             const liquidBaseAmount = BigInt(cancel.data.balance.liquid.base.toString());
@@ -225,10 +241,10 @@ Object.values(marketsConfig).forEach(config => {
         })
         .onTimeInterval(async (block, ctx) => {
             const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
-            const quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
             const orders = await ctx.store.list(Order, []);
-            const marketActiveOrders = orders.filter(order => order.market === ctx.contractAddress && order.status === "Active");
-
+            const marketActiveOrders = orders.filter(order => order.market === config.market && order.status === "Active");
+            console.log("market", ctx.contractAddress, config.market)
+            
             const historicalBasePrices = await getPricesLastWeek(config.baseTokenSymbol, ctx);
             console.log("historicalBasePrices:", historicalBasePrices);
 
@@ -252,58 +268,64 @@ Object.values(marketsConfig).forEach(config => {
                 return map;
             }, {});
 
-            for (const user in userOrdersMap) {
-                const userOrders = userOrdersMap[user];
-                // console.log("userOrders", userOrders)
-
-                // if (userOrders.length === 0) continue;
-
-                // const marketConfig = Object.values(marketsConfig).find(market => market.market === userOrders[0].market);
-                // if (!marketConfig) {
-                //     console.log("Market config not found for market", userOrders[0].market);
-                //     continue;
-                // }
-
-                const userBaseTVL = userOrders.reduce((totalBase, userOrder) => {
+            const snapshotPromises = Object.entries(userOrdersMap).map(([user, userOrders]) => {
+                const userUsefulTVL = userOrders.reduce((total, userOrder) => {
                     const orderPrice = Number(userOrder.price) / Math.pow(10, Number(config.priceDecimal));
-                    if (userOrder.orderType === "Sell" && orderPrice >= lowerLimit && orderPrice <= upperLimit) {
-                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(config.baseDecimal))) * Number(baseTokenPrice);
-                        return totalBase + orderValue;
+                    if (orderPrice >= lowerLimit && orderPrice <= upperLimit) {
+                        return total + (Number(userOrder.amount) / Math.pow(10, Number(config.baseDecimal))) * Number(baseTokenPrice);
                     }
-                    return totalBase;
+                    return total;
                 }, 0);
 
-                const userQuoteTVL = userOrders.reduce((totalQuote, userOrder) => {
-                    const orderPrice = Number(userOrder.price) / Math.pow(10, Number(config.priceDecimal));
-                    if (userOrder.orderType === "Buy" && orderPrice >= lowerLimit && orderPrice <= upperLimit) {
-                        const orderValue = (Number(userOrder.amount) / Math.pow(10, Number(config.baseDecimal))) * Number(quoteTokenPrice);
-                        return totalQuote + orderValue;
-                    }
-                    return totalQuote;
-                }, 0);
+                if (userUsefulTVL > 0) {
+                    const snapshot = new UserScoreSnapshot({
+                        id: nanoid(),
+                        timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                        block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
+                        chain_id: Number(ctx.chainId),
+                        block_number: Number(block.height),
+                        user_address: user,
+                        pool_address: ctx.contractAddress,
+                        total_value_locked_score: userUsefulTVL,
+                        market_depth_score: undefined,
+                    });
 
-                const snapshot = new UserScoreSnapshot({
-                    id: getHash(`${user}-${ctx.contractAddress}-${block.height}`),
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-                    block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
-                    chain_id: Number(ctx.chainId),
-                    block_number: Number(block.height),
-                    user_address: user,
-                    pool_address: ctx.contractAddress,
-                    total_value_locked_score: userBaseTVL + userQuoteTVL,
-                    market_depth_score: undefined,
-                });
-                await ctx.store.upsert(snapshot);
-            }
+                    return ctx.store.upsert(snapshot).then(() => {
+                        console.log("snapshot", snapshot.pool_address, config.market);
+                    });
+                } else {
+                    console.log("NO USEFUL", ctx.contractAddress, config.market, user, marketActiveOrders.filter(order => order.user === user));
+                    return Promise.resolve();
+                }
+            });
+            await Promise.all(snapshotPromises);
 
-            const pool = new Pools({
-                id: ctx.contractAddress,
+            const baseToken = new Pools({
+                id: getHash(`${config.baseToken}-${ctx.contractAddress}`),
                 chain_id: Number(ctx.chainId),
                 creation_block_number: config.creationBlockNumber,
-                timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+                timestamp: Math.floor(new Date().getTime() / 1000),
                 pool_address: ctx.contractAddress,
-                lp_token_address: config.baseToken,
-                lp_token_symbol: config.baseTokenSymbol,
+                lp_token_address: ctx.contractAddress,
+                lp_token_symbol: `${config.baseTokenSymbol}/${config.quoteTokenSymbol}`,
+                token_address: config.baseToken,
+                token_symbol: config.baseTokenSymbol,
+                token_decimals: config.baseDecimal,
+                token_index: 1,
+                fee_rate: config.feeRate,
+                dex_type: config.dexType,
+            });
+            await ctx.store.upsert(baseToken);
+            console.log("chain", Number(ctx.chainId), ctx.chainId)
+            
+            const quoteToken = new Pools({
+                id: getHash(`${config.quoteToken}-${ctx.contractAddress}`),
+                chain_id: Number(ctx.chainId),
+                creation_block_number: config.creationBlockNumber,
+                timestamp: Math.floor(new Date().getTime() / 1000),
+                pool_address: ctx.contractAddress,
+                lp_token_address: ctx.contractAddress,
+                lp_token_symbol: `${config.baseTokenSymbol}/${config.quoteTokenSymbol}`,
                 token_address: config.quoteToken,
                 token_symbol: config.quoteTokenSymbol,
                 token_decimals: config.quoteDecimal,
@@ -311,13 +333,15 @@ Object.values(marketsConfig).forEach(config => {
                 fee_rate: config.feeRate,
                 dex_type: config.dexType,
             });
-            await ctx.store.upsert(pool);
+            await ctx.store.upsert(quoteToken);
         }, 60, 60)
         .onTimeInterval(async (block, ctx) => {
             const balances = await ctx.store.list(Balance, []);
             const marketBalances = balances.filter(balance => balance.market === ctx.contractAddress);
 
             let TVL = BigDecimal(0);
+            let amountBase = BigDecimal(0);
+            let amountQuote = BigDecimal(0);
             let TVLInOrders = BigDecimal(0);
             
             let quoteTVL = BigDecimal(0);
@@ -400,15 +424,6 @@ Object.values(marketsConfig).forEach(config => {
             await ctx.store.upsert(dailyMarketVolume);
 
             for (const balance of marketBalances) {
-                // const marketConfig = Object.values(marketsConfig).find(market => market.market === balance.market);
-
-                // if (!marketConfig) {
-                //     ctx.eventLogger.emit('MarketConfigNotFound', {
-                //         severity: LogLevel.ERROR,
-                //         message: `Market config not found for market address ${balance.market}`,
-                //     });
-                //     continue;
-                // }
 
                 let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp));
                 let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp));
@@ -419,8 +434,8 @@ Object.values(marketsConfig).forEach(config => {
                     quoteTokenPrice = config.defaultQuotePrice
                 }
 
-                const baseBalanceAmount = balance.liquidBaseAmount + balance.lockedBaseAmount;
-                const quoteBalanceAmount = balance.liquidQuoteAmount + balance.lockedQuoteAmount;
+                const baseBalanceAmount = balance.baseAmount;
+                const quoteBalanceAmount = balance.quoteAmount;
 
                 const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
                 const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
@@ -437,14 +452,12 @@ Object.values(marketsConfig).forEach(config => {
 
                 const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
                 const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
-                // const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
+                const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
 
-                // balance.tvl = balanceTVL;
-                // balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
-                // await ctx.store.upsert(balance);
-
-                TVL = TVL.plus(balance.tvl);
-                TVLInOrders = TVLInOrders.plus(balance.tvlOrders);
+                TVL = TVL.plus(balanceTVL);
+                amountBase = amountBase.plus(baseBalanceAmountBigDecimal);
+                amountQuote = amountQuote.plus(quoteBalanceAmountBigDecimal);
+                // TVLInOrders = TVLInOrders.plus(balance.tvlOrders);
 
                 quoteTVL = quoteTVL.plus(balanceQuoteTVL);
                 baseTVL = baseTVL.plus(balanceBaseTVL);
@@ -457,6 +470,9 @@ Object.values(marketsConfig).forEach(config => {
                 baseAmountOnOrders = baseAmountOnOrders.plus(lockedBaseAmount)
 
                 ctx.meter.Gauge("total_tvl").record(TVL)
+                ctx.meter.Gauge("amount_base").record(amountBase)
+                ctx.meter.Gauge("amount_quote").record(amountQuote)
+
                 ctx.meter.Gauge("total_orders_tvl").record(TVLInOrders)
                 ctx.meter.Gauge("total_quote_tvl").record(quoteTVL)
                 ctx.meter.Gauge("total_base_tvl").record(baseTVL)
