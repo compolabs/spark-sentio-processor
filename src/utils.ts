@@ -55,7 +55,7 @@ export async function updateBalance(
 		balance = new Balance({
 			id: balanceId,
 			user: event.data.user.Address?.bits,
-			market: ctx.contractAddress,
+			market: config.market,
 			liquidBaseAmount: BigInt(liquidBaseAmount.toString()),
 			liquidQuoteAmount: BigInt(liquidQuoteAmount.toString()),
 			lockedBaseAmount: BigInt(lockedBaseAmount.toString()),
@@ -68,26 +68,26 @@ export async function updateBalance(
 	await ctx.store.upsert(balance);
 }
 
-export async function getPricesLastWeek(symbol: string, ctx: any): Promise<number[]> {
+export async function getPricesLastWeek(config: any, ctx: any): Promise<number[]> {
 	const prices: number[] = [];
 	const currentTimestamp = ctx.timestamp;
 
 	const pricePromises = Array.from({ length: 7 * 24 }).map((_, i) => {
 		const timestampForHourAgo = currentTimestamp - i * 3600000;
-		return getPriceBySymbol(symbol, new Date(timestampForHourAgo)).then(price => {
+		return getPriceBySymbol(config.baseTokenSymbol, new Date(timestampForHourAgo)).then(price => {
 			price !== undefined ? prices.push(price) : null;
 		});
 	});
 	await Promise.all(pricePromises);
-	console.log("prices", prices, ctx.contractAddress);
+	console.log("prices", prices, ctx.contractAddress, config.baseTokenSymbol);
 	return prices;
 }
 
 
-export function calculatePercentile(values: number[], percentile: number, ctx: any): number {
+export function calculatePercentile(values: number[], percentile: number, ctx: any, config: any): number {
 	values.sort((a, b) => a - b);
 	const index = Math.floor((percentile / 100) * values.length);
-	console.log("values", values, ctx.contractAddress)
-	console.log("index", values[index], ctx.contractAddress)
+	console.log("values", values, ctx.contractAddress, config.market)
+	console.log("index", values[index], ctx.contractAddress, config.market)
 	return values[index];
 }
