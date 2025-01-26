@@ -75,19 +75,19 @@ export async function getPricesLastWeek(config: any, ctx: any): Promise<number[]
 	const pricePromises = Array.from({ length: 7 * 24 }).map((_, i) => {
 		const timestampForHourAgo = currentTimestamp - i * 3600000;
 		return getPriceBySymbol(config.baseTokenSymbol, new Date(timestampForHourAgo)).then(price => {
-			price !== undefined ? prices.push(price) : null;
+			prices.push(price !== undefined ? price : config.defaultBasePrice);
 		});
 	});
 	await Promise.all(pricePromises);
-	console.log("prices", prices, ctx.contractAddress, config.baseTokenSymbol);
+	console.log("prices", Math.floor(new Date(ctx.timestamp).getTime() / 1000), ctx.contractAddress, config.baseTokenSymbol, prices);
 	return prices;
 }
 
 
-export function calculatePercentile(values: number[], percentile: number, ctx: any, config: any): number {
+export function calculatePercentile(values: number[], ctx: any, config: any): number {
 	values.sort((a, b) => a - b);
-	const index = Math.floor((percentile / 100) * values.length);
-	console.log("values", values, ctx.contractAddress, config.market)
-	console.log("index", values[index], ctx.contractAddress, config.market)
+	const index = Math.floor((config.percentile / 100) * values.length);
+	console.log("values", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, values, ctx.contractAddress )
+	console.log("index", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, values[index], ctx.contractAddress)
 	return values[index];
 }

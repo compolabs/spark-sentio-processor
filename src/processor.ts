@@ -241,24 +241,25 @@ Object.values(marketsConfig).forEach(config => {
         })
         .onTimeInterval(async (block, ctx) => {
             const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
+            console.log("price for ", config.baseTokenSymbol, baseTokenPrice)
             const orders = await ctx.store.list(Order, []);
             const marketActiveOrders = orders.filter(order => order.market === config.market && order.status === "Active");
             console.log("market", ctx.contractAddress, config.market)
             
             const historicalBasePrices = await getPricesLastWeek(config, ctx);
-            console.log("historicalBasePrices:", historicalBasePrices, config.market, ctx.contractAddress);
+            console.log("historicalBasePrices", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, historicalBasePrices, ctx.contractAddress);
 
             const basePriceChanges = historicalBasePrices.map((price, index, arr) => {
                 if (index === 0) return 0;
                 return Math.abs(arr[index] - arr[index - 1]);
             });
-            console.log("Base price changes:", basePriceChanges, config.market, ctx.contractAddress);
+            console.log("Base price changes", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, basePriceChanges,  ctx.contractAddress);
 
-            const percentile = calculatePercentile(basePriceChanges, 95, ctx, config);
+            const percentile = calculatePercentile(basePriceChanges, ctx, config);
 
             const lowerLimit = baseTokenPrice * (1 - percentile / 100);
             const upperLimit = baseTokenPrice * (1 + percentile / 100);
-            console.log("limits:", baseTokenPrice, percentile, lowerLimit, upperLimit, ctx.contractAddress, config.market);
+            console.log("limits", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, baseTokenPrice, percentile, lowerLimit, upperLimit, ctx.contractAddress);
 
             const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
                 if (!map[order.user]) {
@@ -288,6 +289,10 @@ Object.values(marketsConfig).forEach(config => {
                         pool_address: config.market,
                         total_value_locked_score: userUsefulTVL,
                         market_depth_score: undefined,
+                        marketPrice: baseTokenPrice,
+                        lowerLimit: lowerLimit,
+                        upperLimit: upperLimit,
+                        percentile: percentile,
                     });
 
                     return ctx.store.upsert(snapshot).then(() => {

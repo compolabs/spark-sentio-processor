@@ -247,6 +247,10 @@ interface UserScoreSnapshotConstructorInput {
   pool_address: String;
   total_value_locked_score: Float;
   market_depth_score?: Int;
+  marketPrice: Float;
+  lowerLimit: Float;
+  upperLimit: Float;
+  percentile: Float;
 }
 @Entity("UserScoreSnapshot")
 export class UserScoreSnapshot extends AbstractEntity  {
@@ -285,6 +289,22 @@ export class UserScoreSnapshot extends AbstractEntity  {
 
 	@Column("Int")
 	market_depth_score?: Int
+
+	@Required
+	@Column("Float")
+	marketPrice: Float
+
+	@Required
+	@Column("Float")
+	lowerLimit: Float
+
+	@Required
+	@Column("Float")
+	upperLimit: Float
+
+	@Required
+	@Column("Float")
+	percentile: Float
   constructor(data: UserScoreSnapshotConstructorInput) {super()}
   
 }
@@ -488,19 +508,11 @@ type UserScoreSnapshot @entity {
   pool_address: String!
   total_value_locked_score: Float!
   market_depth_score: Int
+  marketPrice: Float!
+  lowerLimit: Float!
+  upperLimit: Float!
+  percentile: Float!
 }
-
-# type UserScoreSnapshotNew @entity {
-#   id: ID!
-#   timestamp: Int!
-#   block_date: String!
-#   chain_id: Int!
-#   block_number: Int!
-#   user_address: String!
-#   pool_address: String!
-#   total_value_locked_score: Float!
-#   market_depth_score: Int
-# }
 
 type Pools @entity {
   id: ID!
