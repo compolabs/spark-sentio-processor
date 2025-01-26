@@ -1,6 +1,4 @@
-import { BigDecimal } from "@sentio/sdk";
-// import { marketsConfig } from "./marketsConfig.js";
-import { Balance } from "./schema/store.js";
+import { Balance, Order, OrderStatus } from "./schema/store.js";
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import crypto from "crypto";
 
@@ -19,30 +17,6 @@ export async function updateBalance(
 	lockedBaseAmount: BigInt,
 	lockedQuoteAmount: BigInt,
 ): Promise<void> {
-	// let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
-	// let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
-
-	// const baseBalanceAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString());
-	// const quoteBalanceAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString());
-
-	// const baseInOrders = BigInt(lockedBaseAmount.toString());
-	// const quoteInOrders = BigInt(lockedQuoteAmount.toString());
-
-	// const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
-	// const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
-
-	// const baseInOrdersBigDecimal = BigDecimal(baseInOrders.toString()).div(BigDecimal(10).pow(config.baseDecimal));
-	// const quoteInOrdersBigDecimal = BigDecimal(quoteInOrders.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
-
-	// const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
-	// const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
-
-	// const balanceBaseOrdersTVL = baseInOrdersBigDecimal.multipliedBy(baseTokenPrice);
-	// const balanceQuoteOrdersTVL = quoteInOrdersBigDecimal.multipliedBy(quoteTokenPrice);
-
-	// const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
-	// const balanceOrdersTVL = balanceBaseOrdersTVL.plus(balanceQuoteOrdersTVL).toNumber();
-
 	if (balance) {
 		balance.liquidBaseAmount = BigInt(liquidBaseAmount.toString())
 		balance.liquidQuoteAmount = BigInt(liquidQuoteAmount.toString())
@@ -67,6 +41,24 @@ export async function updateBalance(
 	}
 	await ctx.store.upsert(balance);
 }
+
+export const updateOrder = async (ctx: any, config: any, order: Order | undefined, tradeSize: string, orderId: string, isSellOrder: boolean) => {
+	if (order) {
+		const updatedAmount = BigInt(order.amount.toString()) - BigInt(tradeSize);
+		const isOrderClosed = updatedAmount === 0n;
+		order.amount = isOrderClosed ? 0n : updatedAmount;
+		order.status = isOrderClosed ? OrderStatus.Closed : order.status;
+		order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+		await ctx.store.upsert(order);
+	} else {
+		console.log(`No ${isSellOrder ? 'sell' : 'buy'} order for trade`, orderId);
+		ctx.eventLogger.emit(`no ${isSellOrder ? 'sell' : 'buy'} order for trade`, {
+			market: ctx.contractAddress,
+			config: config.market,
+			orderId,
+		});
+	}
+};
 
 export async function getPricesLastWeek(config: any, ctx: any): Promise<number[]> {
 	const prices: number[] = [];

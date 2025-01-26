@@ -53,24 +53,24 @@ export const marketsConfig = {
     "contractDeployed": 1734260967,
     "percentile": 95
   },
-  "TRUMP-ETH": {
-    "market": "0x272bc2c2d065e8ca22f0473e328f403bb1ba2e85d71f5fa51dcb83393714ff01",
-    "baseToken": "0xa168394dda72a436becdbd920e7cdea302b49f7b1160ed13c5102ebf185f3bf4",
-    "baseTokenSymbol": "TRUMP",
-    "quoteToken": "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
-    "quoteTokenSymbol": "ETH",
-    "baseDecimal": "9",
-    "quoteDecimal": "9",
-    "priceDecimal": "9",
-    "defaultBasePrice": 0.000016,
-    "defaultQuotePrice": 3200,
-    "creationBlockNumber": 12320904,
-    "feeRate": 0.023,
-    "dexType": "Orderbook",
-    "chainId": 9889,
-    "contractDeployed": 1737458647,
-    "percentile": 95
-  },
+  // "TRUMP-ETH": {
+  //   "market": "0x272bc2c2d065e8ca22f0473e328f403bb1ba2e85d71f5fa51dcb83393714ff01",
+  //   "baseToken": "0xa168394dda72a436becdbd920e7cdea302b49f7b1160ed13c5102ebf185f3bf4",
+  //   "baseTokenSymbol": "TRUMP",
+  //   "quoteToken": "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
+  //   "quoteTokenSymbol": "ETH",
+  //   "baseDecimal": "9",
+  //   "quoteDecimal": "9",
+  //   "priceDecimal": "9",
+  //   "defaultBasePrice": 0.000016,
+  //   "defaultQuotePrice": 3200,
+  //   "creationBlockNumber": 12320904,
+  //   "feeRate": 0.023,
+  //   "dexType": "Orderbook",
+  //   "chainId": 9889,
+  //   "contractDeployed": 1737458647,
+  //   "percentile": 95
+  // },
   "USDT-USDC": {
     "market": "0xe4e4844f78e2e470b590d0c76ffc9f4422a87317377813a181a02c60a60bc774",
     "baseToken": "0xa0265fb5c32f6e8db3197af3c7eb05c48ae373605b8165b6f4a51c5b0ba4812e",
@@ -89,23 +89,24 @@ export const marketsConfig = {
     "contractDeployed": 1737458783,
     "percentile": 95
   },
-  "FUEL-ETH": {
-    "market": "0x4391b39d9165917faffb9dcc69d19b6952a6ebf02db593747cf2f5d8298d28c7",
-    "baseToken": "0x1d5d97005e41cae2187a895fd8eab0506111e0e2f3331cd3912c15c24e3c1d82",
-    "baseTokenSymbol": "FUEL",
-    "quoteToken": "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
-    "quoteTokenSymbol": "ETH",
-    "baseDecimal": "9",
-    "quoteDecimal": "9",
-    "priceDecimal": "9",
-    "defaultBasePrice": 0.04,
-    "defaultQuotePrice": 3200,
-    "creationBlockNumber": 12319779,
-    "feeRate": 0.023,
-    "dexType": "Orderbook",
-    "chainId": 9889,
-    "contractDeployed": 1737457512
-  },
+  // "FUEL-ETH": {
+  //   "market": "0x4391b39d9165917faffb9dcc69d19b6952a6ebf02db593747cf2f5d8298d28c7",
+  //   "baseToken": "0x1d5d97005e41cae2187a895fd8eab0506111e0e2f3331cd3912c15c24e3c1d82",
+  //   "baseTokenSymbol": "FUEL",
+  //   "quoteToken": "0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07",
+  //   "quoteTokenSymbol": "ETH",
+  //   "baseDecimal": "9",
+  //   "quoteDecimal": "9",
+  //   "priceDecimal": "9",
+  //   "defaultBasePrice": 0.04,
+  //   "defaultQuotePrice": 3200,
+  //   "creationBlockNumber": 12319779,
+  //   "feeRate": 0.023,
+  //   "dexType": "Orderbook",
+  //   "chainId": 9889,
+  //   "contractDeployed": 1737457512,
+  //   "percentile": 95
+  // },
   "WETH-USDC": {
     "market": "0x0bef6eb3018d901818978175feccf650b65dee8e3a8f5b59e138bcf1cf1d0db9",
     "baseToken": "0xa38a5a8beeb08d95744bc7f58528073f4052b254def59eba20c99c202b5acaa3",
@@ -159,6 +160,5 @@ export const marketsConfig = {
     "chainId": 9889,
     "contractDeployed": 1737457767,
     "percentile": 95
-
   },
 }

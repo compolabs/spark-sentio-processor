@@ -5,7 +5,7 @@ import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
-import { calculatePercentile, getHash, getPricesLastWeek, updateBalance } from "./utils.js";
+import { calculatePercentile, getHash, getPricesLastWeek, updateBalance, updateOrder } from "./utils.js";
 import { GLOBAL_CONFIG } from "@sentio/runtime"
 
 GLOBAL_CONFIG.execution = {
@@ -20,15 +20,6 @@ const cancelOrderCounter = Counter.register("cancelOrder");
 const tradeOrderCounter = Counter.register("tradeOrder");
 const totalEventsCounter = Counter.register("totalEvents");
 
-const totalBaseDeposited = Counter.register("totalBaseDeposited");
-const totalQuoteDeposited = Counter.register("totalQuoteDeposited");
-
-const totalBaseWithdrawn = Counter.register("totalBaseWithdrawn");
-const totalQuoteWithdrawn = Counter.register("totalQuoteWithdrawn");
-
-const totalBaseWithdrawnTo = Counter.register("totalBaseWithdrawnTo");
-const totalQuoteWithdrawnTo = Counter.register("totalQuoteWithdrawnTo");
-
 const shortCounter = Counter.register("shorts");
 const longCounter = Counter.register("longs");
 
@@ -40,14 +31,6 @@ Object.values(marketsConfig).forEach(config => {
     .onLogDepositEvent(async (deposit, ctx) => {
         depositCounter.add(ctx, 1);
         totalEventsCounter.add(ctx, 1);
-
-        const price = deposit.data.asset.bits === config.baseToken
-            ? await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice
-            : await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
-        // console.log("deposit price", deposit.data.asset.bits, price)
-        deposit.data.asset.bits === config.baseToken
-            ? totalBaseDeposited.add(ctx, BigDecimal(deposit.data.amount.toString()).div(BigDecimal(10).pow(config.baseDecimal)).multipliedBy(price))
-            : totalQuoteDeposited.add(ctx,BigDecimal(deposit.data.amount.toString()).div(BigDecimal(10).pow(config.quoteDecimal)).multipliedBy(price))
 
             const balanceId = getHash(`${deposit.data.user.Address?.bits}-${config.market}`);
             let balance = await ctx.store.get(Balance, balanceId);
@@ -61,14 +44,6 @@ Object.values(marketsConfig).forEach(config => {
         .onLogWithdrawEvent(async (withdraw, ctx) => {
             withdrawCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
-
-            const price = withdraw.data.asset.bits === config.baseToken
-                ? await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice
-                : await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
-           
-            withdraw.data.asset.bits === config.baseToken
-                ? totalBaseWithdrawn.add(ctx, BigDecimal(withdraw.data.amount.toString()).div(BigDecimal(10).pow(config.baseDecimal)).multipliedBy(price))
-                : totalQuoteWithdrawn.add(ctx, BigDecimal(withdraw.data.amount.toString()).div(BigDecimal(10).pow(config.quoteDecimal)).multipliedBy(price))
             
             const balanceId = getHash(`${withdraw.data.user.Address?.bits}-${config.market}`);
             let balance = await ctx.store.get(Balance, balanceId);
@@ -82,16 +57,8 @@ Object.values(marketsConfig).forEach(config => {
         .onLogWithdrawToMarketEvent(async (withdrawTo, ctx) => {
             withdrawToMarketCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
-            const price = withdrawTo.data.asset.bits === config.baseToken
-                ? await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice
-                : await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
-            
-            withdrawTo.data.asset.bits === config.baseToken
-                ? totalBaseWithdrawnTo.add(ctx, BigDecimal(withdrawTo.data.amount.toString()).div(BigDecimal(10).pow(config.baseDecimal)).multipliedBy(price))
-                : totalQuoteWithdrawnTo.add(ctx, BigDecimal(withdrawTo.data.amount.toString()).div(BigDecimal(10).pow(config.quoteDecimal)).multipliedBy(price))
             
             const balanceId = getHash(`${withdrawTo.data.user.Address?.bits}-${config.market}`);
-            
             let balance = await ctx.store.get(Balance, balanceId);
 
             const liquidBaseAmount = BigInt(withdrawTo.data.account.liquid.base.toString());
@@ -104,6 +71,7 @@ Object.values(marketsConfig).forEach(config => {
             openOrderCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
             open.data.order_type === "Buy" ? longCounter.add(ctx, 1) : shortCounter.add(ctx, 1);
+
             const balanceId = getHash(`${open.data.user.Address?.bits}-${config.market}`);
             let balance = await ctx.store.get(Balance, balanceId);
 
@@ -145,58 +113,19 @@ Object.values(marketsConfig).forEach(config => {
             const seller_balanceId = getHash(`${trade.data.order_seller.Address?.bits}-${config.market}`);
             const buyer_balanceId = getHash(`${trade.data.order_buyer.Address?.bits}-${config.market}`);
             
-            let seller_balance = await ctx.store.get(Balance, seller_balanceId);
-            let buyer_balance = await ctx.store.get(Balance, buyer_balanceId);
-            
-            let sell_order = await ctx.store.get(Order, trade.data.base_sell_order_id);
-            let buy_order = await ctx.store.get(Order, trade.data.base_buy_order_id);
-            
-            if (sell_order) {
-                const updatedActiveSellAmount = BigInt(sell_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
-                const isActiveSellOrderClosed = updatedActiveSellAmount === 0n;
-                
-                if (isActiveSellOrderClosed) {
-                    sell_order.amount = 0n
-                    sell_order.status = OrderStatus.Closed
-                    sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                } else {
-                    sell_order.amount = updatedActiveSellAmount;
-                    sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                }
-                await ctx.store.upsert(sell_order);
-            } else {
-                console.log("no sell order for trade", trade.data.base_sell_order_id);
-                ctx.eventLogger.emit("no sell order for trade", {
-                    market: ctx.contractAddress,
-                    config: config.market,
-                    orderId: trade.data.base_sell_order_id,
-                })
-            }
-            
-            if (buy_order) {
-                const updatedActiveBuyAmount = BigInt(buy_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
-                const isActiveBuyOrderClosed = updatedActiveBuyAmount === 0n;
-                
-                if (isActiveBuyOrderClosed) {
-                    buy_order.amount = 0n
-                    buy_order.status = OrderStatus.Closed
-                    buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                } else {
-                    buy_order.amount = updatedActiveBuyAmount;
-                    buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-                }
-                await ctx.store.upsert(buy_order);
-            } else {
-                console.log("no buy order for trade", trade.data.base_buy_order_id);
-                ctx.eventLogger.emit("no buy order for trade", {
-                    market: ctx.contractAddress,
-                    config: config.market,
-                    orderId: trade.data.base_buy_order_id,
-                })
-            }
-            
-            await updateBalance(config, trade, ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
-            await updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
+            const [seller_balance, buyer_balance, sell_order, buy_order] = await Promise.all([
+                ctx.store.get(Balance, seller_balanceId),
+                ctx.store.get(Balance, buyer_balanceId),
+                ctx.store.get(Order, trade.data.base_sell_order_id),
+                ctx.store.get(Order, trade.data.base_buy_order_id),
+            ]);
+
+            await Promise.all([
+                updateOrder(config, ctx, sell_order, trade.data.trade_size.toString(), trade.data.base_sell_order_id, true),
+                updateOrder(config, ctx, buy_order, trade.data.trade_size.toString(), trade.data.base_buy_order_id, false),
+                updateBalance(config, trade, ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount),
+                updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount)
+            ]);
             
             const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
             const tradeEvent = new TradeEvent({
@@ -215,9 +144,10 @@ Object.values(marketsConfig).forEach(config => {
         .onLogCancelOrderEvent(async (cancel, ctx: any) => {
             cancelOrderCounter.add(ctx, 1);
             totalEventsCounter.add(ctx, 1);
+
             const balanceId = getHash(`${cancel.data.user.Address?.bits}-${config.market}`);
-            let balance = await ctx.store.get(Balance, balanceId);
-            let order = await ctx.store.get(Order, cancel.data.order_id);
+            const [balance, order] = await Promise.all([ctx.store.get(Balance, balanceId), ctx.store.get(Order, cancel.data.order_id)]);
+
             if (order) {
                 order.amount = 0n
                 order.status = OrderStatus.Canceled
@@ -236,14 +166,19 @@ Object.values(marketsConfig).forEach(config => {
             const liquidQuoteAmount = BigInt(cancel.data.balance.liquid.quote.toString());
             const lockedBaseAmount = BigInt(cancel.data.balance.locked.base.toString());
             const lockedQuoteAmount = BigInt(cancel.data.balance.locked.quote.toString());
-
             await updateBalance(config, cancel, ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
         })
         .onTimeInterval(async (block, ctx) => {
+            let TVLuseful = BigDecimal(0);
+
             const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
             console.log("price for ", config.baseTokenSymbol, baseTokenPrice)
-            const orders = await ctx.store.list(Order, []);
-            const marketActiveOrders = orders.filter(order => order.market === config.market && order.status === "Active");
+            
+            const marketActiveOrders = await ctx.store.list(Order, [
+                { field: 'market', op: '=', value: config.market },
+                { field: 'status', op: '=', value: 'Active' }
+            ]);
+
             console.log("market", ctx.contractAddress, config.market)
             
             const historicalBasePrices = await getPricesLastWeek(config, ctx);
@@ -294,6 +229,7 @@ Object.values(marketsConfig).forEach(config => {
                         upperLimit: upperLimit,
                         percentile: percentile,
                     });
+                    TVLuseful = TVLuseful.plus(userUsefulTVL);
 
                     return ctx.store.upsert(snapshot).then(() => {
                         console.log("snapshot", snapshot.pool_address, config.market);
@@ -320,7 +256,6 @@ Object.values(marketsConfig).forEach(config => {
                 fee_rate: config.feeRate,
                 dex_type: config.dexType,
             });
-            await ctx.store.upsert(baseToken);
             const quoteToken = new Pools({
                 id: getHash(`${config.quoteToken}-${config.market}`),
                 chain_id: config.chainId,
@@ -336,12 +271,14 @@ Object.values(marketsConfig).forEach(config => {
                 fee_rate: config.feeRate,
                 dex_type: config.dexType,
             });
-            await ctx.store.upsert(quoteToken);
+
+            await Promise.all([ ctx.store.upsert(baseToken), ctx.store.upsert(quoteToken)]);
+
+            ctx.meter.Gauge("tvl_useful").record(TVLuseful)
         }, 60, 60)
         .onTimeInterval(async (block, ctx) => {
-            const balances = await ctx.store.list(Balance, []);
-            const marketBalances = balances.filter(balance => balance.market === config.market);
-
+            const marketBalances = await ctx.store.list(Balance, [{ field: 'market', op: '=', value: config.market }]);
+            
             let TVL = BigDecimal(0);
             let amountBase = BigDecimal(0);
             let amountQuote = BigDecimal(0);
@@ -349,26 +286,25 @@ Object.values(marketsConfig).forEach(config => {
             
             let quoteTVL = BigDecimal(0);
             let baseTVL = BigDecimal(0);
-
+            
             let lockedTVL = BigDecimal(0);
             let liquidTVL = BigDecimal(0);
-
+            
             let baseAmountOnContract = BigDecimal(0);
             let baseAmountOnBalances = BigDecimal(0);
             let baseAmountOnOrders = BigDecimal(0);
-
+            
             let dailyTradeVolume = BigDecimal(0);
             let dailyMarketTradeVolume = BigDecimal(0);
-
+            
             let totalTradeVolume = BigDecimal(0);
             let totalMarketTradeVolume = BigDecimal(0);
-
+            
             const currentTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
             const oneDayAgoTimestamp = currentTimestamp - 86400;
-
+            
             const protocolTrades = await ctx.store.list(TradeEvent, []);
             const marketTrades = protocolTrades.filter(trade => trade.market === config.market);
-
 
             const dailyProtocolTrades = protocolTrades.filter(
                 (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
@@ -421,28 +357,22 @@ Object.values(marketsConfig).forEach(config => {
                 volume: totalMarketTradeVolume.toNumber(),
             });
 
-            await ctx.store.upsert(totalVolume);
-            await ctx.store.upsert(totalMarketVolume);
-            await ctx.store.upsert(dailyVolume);
-            await ctx.store.upsert(dailyMarketVolume);
+            await Promise.all([
+                ctx.store.upsert(totalVolume),
+                ctx.store.upsert(totalMarketVolume),
+                ctx.store.upsert(dailyVolume),
+                ctx.store.upsert(dailyMarketVolume)
+            ]);
+
+            const [baseTokenPrice = config.defaultBasePrice, quoteTokenPrice = config.defaultQuotePrice] = await Promise.all([
+                getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)),
+                getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)),
+            ]);
 
             for (const balance of marketBalances) {
 
-                let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp));
-                let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp));
-                if (!baseTokenPrice) {
-                    baseTokenPrice = config.defaultBasePrice
-                }
-                if (!quoteTokenPrice) {
-                    quoteTokenPrice = config.defaultQuotePrice
-                }
-
-                const baseBalanceAmount = balance.baseAmount;
-                const quoteBalanceAmount = balance.quoteAmount;
-
-                const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
-                const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
-
+                const baseBalanceAmountBigDecimal = BigDecimal(balance.baseAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
+                const quoteBalanceAmountBigDecimal = BigDecimal(balance.quoteAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
 
                 const lockedBaseAmount = BigDecimal(balance.lockedBaseAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
                 const lockedQuoteAmount = BigDecimal(balance.lockedQuoteAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
@@ -460,7 +390,6 @@ Object.values(marketsConfig).forEach(config => {
                 TVL = TVL.plus(balanceTVL);
                 amountBase = amountBase.plus(baseBalanceAmountBigDecimal);
                 amountQuote = amountQuote.plus(quoteBalanceAmountBigDecimal);
-                // TVLInOrders = TVLInOrders.plus(balance.tvlOrders);
 
                 quoteTVL = quoteTVL.plus(balanceQuoteTVL);
                 baseTVL = baseTVL.plus(balanceBaseTVL);
@@ -486,5 +415,5 @@ Object.values(marketsConfig).forEach(config => {
                 ctx.meter.Gauge("base_amount_on_balances").record(baseAmountOnBalances)
                 ctx.meter.Gauge("base_amount_on_orders").record(baseAmountOnOrders)
             }
-        }, 1, 1)
+        }, 3, 3)
 })
