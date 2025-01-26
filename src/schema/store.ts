@@ -454,9 +454,6 @@ const source = `type Balance @entity {
 
   baseAmount: BigInt!
   quoteAmount: BigInt!
-
-  # tvl: Float!
-  # tvlOrders: Float!
   timestamp: Int!
 }
 

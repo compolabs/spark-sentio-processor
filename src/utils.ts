@@ -1,5 +1,3 @@
-import { BigDecimal } from "@sentio/sdk";
-// import { marketsConfig } from "./marketsConfig.js";
 import { Balance } from "./schema/store.js";
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import crypto from "crypto";
@@ -19,29 +17,6 @@ export async function updateBalance(
 	lockedBaseAmount: BigInt,
 	lockedQuoteAmount: BigInt,
 ): Promise<void> {
-	// let baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
-	// let quoteTokenPrice = await getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp)) || config.defaultQuotePrice;
-
-	// const baseBalanceAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString());
-	// const quoteBalanceAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString());
-
-	// const baseInOrders = BigInt(lockedBaseAmount.toString());
-	// const quoteInOrders = BigInt(lockedQuoteAmount.toString());
-
-	// const baseBalanceAmountBigDecimal = BigDecimal(baseBalanceAmount.toString()).div(BigDecimal(10).pow(config.baseDecimal));
-	// const quoteBalanceAmountBigDecimal = BigDecimal(quoteBalanceAmount.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
-
-	// const baseInOrdersBigDecimal = BigDecimal(baseInOrders.toString()).div(BigDecimal(10).pow(config.baseDecimal));
-	// const quoteInOrdersBigDecimal = BigDecimal(quoteInOrders.toString()).div(BigDecimal(10).pow(config.quoteDecimal));
-
-	// const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
-	// const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
-
-	// const balanceBaseOrdersTVL = baseInOrdersBigDecimal.multipliedBy(baseTokenPrice);
-	// const balanceQuoteOrdersTVL = quoteInOrdersBigDecimal.multipliedBy(quoteTokenPrice);
-
-	// const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
-	// const balanceOrdersTVL = balanceBaseOrdersTVL.plus(balanceQuoteOrdersTVL).toNumber();
 
 	if (balance) {
 		balance.liquidBaseAmount = BigInt(liquidBaseAmount.toString())
