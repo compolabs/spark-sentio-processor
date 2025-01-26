@@ -112,19 +112,10 @@ Object.values(marketsConfig).forEach(config => {
             
         const seller_balanceId = getHash(`${trade.data.order_seller.Address?.bits}-${config.market}`);
         const buyer_balanceId = getHash(`${trade.data.order_buyer.Address?.bits}-${config.market}`);
-            
-            // let seller_balance = await ctx.store.get(Balance, seller_balanceId);
-            // let buyer_balance = await ctx.store.get(Balance, buyer_balanceId);
-            
-            // let sell_order = await ctx.store.get(Order, trade.data.base_sell_order_id);
-            // let buy_order = await ctx.store.get(Order, trade.data.base_buy_order_id);
 
-        const [seller_balance, buyer_balance] = await Promise.all([
+        const [seller_balance, buyer_balance, sell_order, buy_order] = await Promise.all([
             ctx.store.get(Balance, seller_balanceId),
             ctx.store.get(Balance, buyer_balanceId),
-        ]);
-
-        const [sell_order, buy_order] = await Promise.all([
             ctx.store.get(Order, trade.data.base_sell_order_id),
             ctx.store.get(Order, trade.data.base_buy_order_id),
         ]);
@@ -192,9 +183,10 @@ Object.values(marketsConfig).forEach(config => {
     .onLogCancelOrderEvent(async (cancel, ctx: any) => {
         cancelOrderCounter.add(ctx, 1);
         totalEventsCounter.add(ctx, 1);
+
         const balanceId = getHash(`${cancel.data.user.Address?.bits}-${config.market}`);
-        let balance = await ctx.store.get(Balance, balanceId);
-        let order = await ctx.store.get(Order, cancel.data.order_id);
+        const [balance, order] = await Promise.all([ctx.store.get(Balance, balanceId), ctx.store.get(Order, cancel.data.order_id)]);
+
         if (order) {
             order.amount = 0n
             order.status = OrderStatus.Canceled
@@ -216,15 +208,12 @@ Object.values(marketsConfig).forEach(config => {
     })
     .onTimeInterval(async (block, ctx) => {
         const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
-        console.log("price for ", config.baseTokenSymbol, baseTokenPrice)
 
         const marketActiveOrders = await ctx.store.list(Order, [
             { field: 'market', op: '=', value: config.market },
             { field: 'status', op: '=', value: 'Active' }
         ]);
 
-        console.log("market", ctx.contractAddress, config.market)
-            
         const historicalBasePrices = await getPricesLastWeek(config, ctx);
         console.log("historicalBasePrices", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, historicalBasePrices, ctx.contractAddress);
 
@@ -278,7 +267,7 @@ Object.values(marketsConfig).forEach(config => {
                     console.log("snapshot", snapshot.pool_address, config.market);
                 });
             } else {
-                console.log("no useful", ctx.contractAddress, config.market, user, marketActiveOrders.filter(order => order.user === user));
+                console.log("no useful", ctx.contractAddress, config.market, user);
                 return Promise.resolve();
             }
         });
