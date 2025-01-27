@@ -445,5 +445,5 @@ Object.values(marketsConfig).forEach(config => {
             ctx.meter.Gauge("base_amount_on_balances").record(baseAmountOnBalances)
             ctx.meter.Gauge("base_amount_on_orders").record(baseAmountOnOrders)
         }
-    }, 120, 120)
+    }, 5, 5)
 })
