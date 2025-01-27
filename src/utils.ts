@@ -42,6 +42,43 @@ export async function updateBalance(
 	}
 	await ctx.store.upsert(balance);
 }
+export async function updateBalanceTrade(
+	config: any,
+	// event: any,
+	ctx: any,
+	user: string | undefined,
+	balance: Balance | undefined,
+	balanceId: string,
+	liquidBaseAmount: BigInt,
+	liquidQuoteAmount: BigInt,
+	lockedBaseAmount: BigInt,
+	lockedQuoteAmount: BigInt,
+): Promise<void> {
+
+	if (balance) {
+		balance.liquidBaseAmount = BigInt(liquidBaseAmount.toString())
+		balance.liquidQuoteAmount = BigInt(liquidQuoteAmount.toString())
+		balance.lockedBaseAmount = BigInt(lockedBaseAmount.toString())
+		balance.lockedQuoteAmount = BigInt(lockedQuoteAmount.toString())
+		balance.baseAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString())
+		balance.quoteAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString())
+		balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+	} else {
+		balance = new Balance({
+			id: balanceId,
+			user: user as string,
+			market: config.market,
+			liquidBaseAmount: BigInt(liquidBaseAmount.toString()),
+			liquidQuoteAmount: BigInt(liquidQuoteAmount.toString()),
+			lockedBaseAmount: BigInt(lockedBaseAmount.toString()),
+			lockedQuoteAmount: BigInt(lockedQuoteAmount.toString()),
+			baseAmount: BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString()),
+			quoteAmount: BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString()),
+			timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+		});
+	}
+	await ctx.store.upsert(balance);
+}
 
 export async function getPricesLastWeek(config: any, ctx: any): Promise<number[]> {
 	const prices: number[] = [];

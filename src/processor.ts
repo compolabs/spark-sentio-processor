@@ -5,7 +5,7 @@ import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
-import { calculatePercentile, getHash, getPricesLastWeek, updateBalance } from "./utils.js";
+import { calculatePercentile, getHash, getPricesLastWeek, updateBalance, updateBalanceTrade } from "./utils.js";
 import { GLOBAL_CONFIG } from "@sentio/runtime"
 
 GLOBAL_CONFIG.execution = {
@@ -104,11 +104,13 @@ Object.values(marketsConfig).forEach(config => {
         const seller_liquidQuoteAmount = BigInt(trade.data.s_balance.liquid.quote.toString());
         const seller_lockedBaseAmount = BigInt(trade.data.s_balance.locked.base.toString());
         const seller_lockedQuoteAmount = BigInt(trade.data.s_balance.locked.quote.toString());
+        const seller = trade.data.order_seller.Address?.bits;
             
         const buyer_liquidBaseAmount = BigInt(trade.data.b_balance.liquid.base.toString());
         const buyer_liquidQuoteAmount = BigInt(trade.data.b_balance.liquid.quote.toString());
         const buyer_lockedBaseAmount = BigInt(trade.data.b_balance.locked.base.toString());
         const buyer_lockedQuoteAmount = BigInt(trade.data.b_balance.locked.quote.toString());
+        const buyer = trade.data.order_buyer.Address?.bits;
             
         const seller_balanceId = getHash(`${trade.data.order_seller.Address?.bits}-${config.market}`);
         const buyer_balanceId = getHash(`${trade.data.order_buyer.Address?.bits}-${config.market}`);
@@ -163,8 +165,8 @@ Object.values(marketsConfig).forEach(config => {
             orderId: trade.data.base_buy_order_id})
         }
             
-        await updateBalance(config, trade, ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
-        await updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
+        await updateBalanceTrade(config, ctx, seller, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount);
+        await updateBalanceTrade(config, ctx, buyer, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount);
             
         const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
         const tradeEvent = new TradeEvent({
@@ -237,7 +239,7 @@ Object.values(marketsConfig).forEach(config => {
             return map;
         }, {});
 
-        const snapshotPromises = Object.entries(userOrdersMap).map(([user, userOrders]) => {
+        const snapshots = Object.entries(userOrdersMap).map(([user, userOrders]) => {
             const userUsefulTVL = userOrders.reduce((total, userOrder) => {
                 const orderPrice = Number(userOrder.price) / Math.pow(10, Number(config.priceDecimal));
                 if (orderPrice >= lowerLimit && orderPrice <= upperLimit) {
@@ -271,7 +273,7 @@ Object.values(marketsConfig).forEach(config => {
                 return Promise.resolve();
             }
         });
-        await Promise.all(snapshotPromises);
+        await Promise.all(snapshots);
 
         const baseToken = new Pools({
             id: getHash(`${config.baseToken}-${config.market}`),

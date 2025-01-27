@@ -160,6 +160,5 @@ export const marketsConfig = {
     "chainId": 9889,
     "contractDeployed": 1737457767,
     "percentile": 95
-
   },
 }
