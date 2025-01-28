@@ -221,14 +221,14 @@ Object.values(marketsConfig).forEach(config => {
 
         const basePriceChanges = historicalBasePrices.map((price, index, arr) => {
             if (index === 0) return 0;
-            return Math.abs(arr[index] - arr[index - 1]);
+            return Math.abs((arr[index] - arr[index - 1]) / arr[index - 1])
         });
         console.log("Base price changes", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, basePriceChanges,  ctx.contractAddress);
 
         const percentile = calculatePercentile(basePriceChanges, ctx, config);
 
-        const lowerLimit = baseTokenPrice * (1 - percentile / 100);
-        const upperLimit = baseTokenPrice * (1 + percentile / 100);
+        const lowerLimit = baseTokenPrice * (1 - percentile);
+        const upperLimit = baseTokenPrice * (1 + percentile);
         console.log("limits", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, baseTokenPrice, percentile, lowerLimit, upperLimit, ctx.contractAddress);
 
         const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
