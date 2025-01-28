@@ -216,6 +216,15 @@ Object.values(marketsConfig).forEach(config => {
             { field: 'status', op: '=', value: 'Active' }
         ]);
 
+        const buyOrders = marketActiveOrders.filter(order => order.orderType === 'Buy');
+        const sellOrders = marketActiveOrders.filter(order => order.orderType === 'Sell');
+
+        const highestAsk = Number(buyOrders.reduce((max, order) => order.price > max ? order.price : max, -Infinity)) / Math.pow(10, Number(config.priceDecimal));
+        const lowestBid = Number(sellOrders.reduce((min, order) => order.price < min ? order.price : min, Infinity)) / Math.pow(10, Number(config.priceDecimal));
+
+        const midpointPrice = (highestAsk + lowestBid)/2
+        console.log("midpointPrice", midpointPrice, highestAsk, lowestBid, config.market)
+
         const historicalBasePrices = await getPricesLastWeek(config, ctx);
         console.log("historicalBasePrices", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, historicalBasePrices, ctx.contractAddress);
 
@@ -227,8 +236,8 @@ Object.values(marketsConfig).forEach(config => {
 
         const percentile = calculatePercentile(basePriceChanges, ctx, config);
 
-        const lowerLimit = baseTokenPrice * (1 - percentile);
-        const upperLimit = baseTokenPrice * (1 + percentile);
+        const lowerLimit = midpointPrice * (1 - percentile);
+        const upperLimit = midpointPrice * (1 + percentile);
         console.log("limits", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, baseTokenPrice, percentile, lowerLimit, upperLimit, ctx.contractAddress);
 
         const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
@@ -260,6 +269,7 @@ Object.values(marketsConfig).forEach(config => {
                     total_value_locked_score: userUsefulTVL,
                     market_depth_score: undefined,
                     marketPrice: baseTokenPrice,
+                    midpointPrice: midpointPrice,
                     lowerLimit: lowerLimit,
                     upperLimit: upperLimit,
                     percentile: percentile,

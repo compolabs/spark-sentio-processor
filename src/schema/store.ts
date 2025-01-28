@@ -248,6 +248,7 @@ interface UserScoreSnapshotConstructorInput {
   total_value_locked_score: Float;
   market_depth_score?: Int;
   marketPrice: Float;
+  midpointPrice: Float;
   lowerLimit: Float;
   upperLimit: Float;
   percentile: Float;
@@ -293,6 +294,10 @@ export class UserScoreSnapshot extends AbstractEntity  {
 	@Required
 	@Column("Float")
 	marketPrice: Float
+
+	@Required
+	@Column("Float")
+	midpointPrice: Float
 
 	@Required
 	@Column("Float")
@@ -506,6 +511,7 @@ type UserScoreSnapshot @entity {
   total_value_locked_score: Float!
   market_depth_score: Int
   marketPrice: Float!
+  midpointPrice: Float!
   lowerLimit: Float!
   upperLimit: Float!
   percentile: Float!
