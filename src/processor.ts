@@ -219,11 +219,11 @@ Object.values(marketsConfig).forEach(config => {
         const buyOrders = marketActiveOrders.filter(order => order.orderType === 'Buy');
         const sellOrders = marketActiveOrders.filter(order => order.orderType === 'Sell');
 
-        const highestAsk = Number(buyOrders.reduce((max, order) => order.price > max ? order.price : max, -Infinity)) / Math.pow(10, Number(config.priceDecimal));
-        const lowestBid = Number(sellOrders.reduce((min, order) => order.price < min ? order.price : min, Infinity)) / Math.pow(10, Number(config.priceDecimal));
+        const highestBid = Number(buyOrders.reduce((max, order) => order.price > max ? order.price : max, -Infinity)) / Math.pow(10, Number(config.priceDecimal));
+        const lowestAsk = Number(sellOrders.reduce((min, order) => order.price < min ? order.price : min, Infinity)) / Math.pow(10, Number(config.priceDecimal));
 
-        const midpointPrice = (highestAsk + lowestBid)/2
-        console.log("midpointPrice", midpointPrice, highestAsk, lowestBid, config.market)
+        const midpointPrice = (highestBid + lowestAsk)/2
+        console.log("midpointPrice", midpointPrice, highestBid, lowestAsk, config.market)
 
         const historicalBasePrices = await getPricesLastWeek(config, ctx);
         console.log("historicalBasePrices", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, historicalBasePrices, ctx.contractAddress);
