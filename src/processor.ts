@@ -5,7 +5,7 @@ import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
-import { calculatePercentile, getHash, getPricesLastWeek, updateBalance } from "./utils.js";
+import { calculatePercentile, getHash, getPricesLastWeek, pnlCount, updateBalance } from "./utils.js";
 import { GLOBAL_CONFIG } from "@sentio/runtime"
 
 GLOBAL_CONFIG.execution = {
@@ -123,18 +123,20 @@ Object.values(marketsConfig).forEach(config => {
         ]);
             
         if (sell_order) {
-            const updatedActiveSellAmount = BigInt(sell_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
-            const isActiveSellOrderClosed = updatedActiveSellAmount === 0n;
+            const updatedSellAmount = BigInt(sell_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
+            const isSellOrderClosed = updatedSellAmount === 0n;
                 
-            if (isActiveSellOrderClosed) {
+            if (isSellOrderClosed) {
                 sell_order.amount = 0n
                 sell_order.status = OrderStatus.Closed
                 sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
-                sell_order.amount = updatedActiveSellAmount;
+                sell_order.amount = updatedSellAmount;
                 sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             }
             await ctx.store.upsert(sell_order);
+
+            await pnlCount(sell_order, ctx, config)
         } else {
             console.log("no sell order for trade", trade.data.base_sell_order_id);
             ctx.eventLogger.emit("no sell order for trade", {
@@ -145,15 +147,15 @@ Object.values(marketsConfig).forEach(config => {
         }
             
         if (buy_order) {
-            const updatedActiveBuyAmount = BigInt(buy_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
-            const isActiveBuyOrderClosed = updatedActiveBuyAmount === 0n;
+            const updatedBuyAmount = BigInt(buy_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
+            const isBuyOrderClosed = updatedBuyAmount === 0n;
                 
-            if (isActiveBuyOrderClosed) {
+            if (isBuyOrderClosed) {
                 buy_order.amount = 0n
                 buy_order.status = OrderStatus.Closed
                 buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             } else {
-                buy_order.amount = updatedActiveBuyAmount;
+                buy_order.amount = updatedBuyAmount;
                 buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
             }
             await ctx.store.upsert(buy_order);

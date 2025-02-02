@@ -1,4 +1,4 @@
-import { Balance } from "./schema/store.js";
+import { Balance, Order } from "./schema/store.js";
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import crypto from "crypto";
 
@@ -64,4 +64,32 @@ export function calculatePercentile(values: number[], ctx: any, config: any): nu
 	console.log("values", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, values, ctx.contractAddress )
 	console.log("index", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, values[index], ctx.contractAddress)
 	return values[index];
+}
+
+export async function pnlCount(order: Order, ctx: any, config: any): Promise<number>  {
+	const userClosedOrders: Order[] = await ctx.store.list(Order, [
+		{ field: 'user', op: '=', value: order.user },
+		{ field: 'market', op: '=', value: config.market },
+		{ field: 'status', op: '=', value: 'Closed' }
+	]);
+
+	const buyOrders = userClosedOrders.filter(order => order.orderType === 'Buy');
+	const sellOrders = userClosedOrders.filter(order => order.orderType === 'Sell');
+
+	if (buyOrders.length === 0 || sellOrders.length === 0) {
+		return 0;
+	}
+	
+	const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
+	const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+
+	const totalSellPrice = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
+	const totalSellAmount = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+
+	const averageBuyPrice = totalBuyPrice / totalBuyAmount;
+	const averageSellPrice = totalSellPrice / totalSellAmount;
+
+	const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount
+
+	return realizedPNL;
 }
