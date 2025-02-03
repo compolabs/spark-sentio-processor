@@ -28,6 +28,8 @@ interface BalanceConstructorInput {
   lockedQuoteAmount: BigInt;
   baseAmount: BigInt;
   quoteAmount: BigInt;
+  sellClosed: Int;
+  buyClosed: Int;
   timestamp: Int;
 }
 @Entity("Balance")
@@ -68,6 +70,14 @@ export class Balance extends AbstractEntity  {
 	@Required
 	@Column("BigInt")
 	quoteAmount: BigInt
+
+	@Required
+	@Column("Int")
+	sellClosed: Int
+
+	@Required
+	@Column("Int")
+	buyClosed: Int
 
 	@Required
 	@Column("Int")
@@ -459,6 +469,10 @@ const source = `type Balance @entity {
 
   baseAmount: BigInt!
   quoteAmount: BigInt!
+
+  sellClosed: Int!
+  buyClosed: Int!
+
   timestamp: Int!
 }
 

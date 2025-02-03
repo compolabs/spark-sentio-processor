@@ -9,6 +9,10 @@ type Balance @entity {
 
   baseAmount: BigInt!
   quoteAmount: BigInt!
+
+  sellClosed: Int!
+  buyClosed: Int!
+
   timestamp: Int!
 }
 

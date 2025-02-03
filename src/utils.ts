@@ -1,4 +1,4 @@
-import { Balance, Order } from "./schema/store.js";
+import { Balance, Order, OrderStatus } from "./schema/store.js";
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import crypto from "crypto";
 
@@ -16,7 +16,9 @@ export async function updateBalance(
 	liquidQuoteAmount: BigInt,
 	lockedBaseAmount: BigInt,
 	lockedQuoteAmount: BigInt,
-	user?: string
+	isSellOrderClosed?: boolean,
+	isBuyOrderClosed?: boolean, 
+	user?: string,
 ): Promise<void> {
 	if (balance) {
 		balance.liquidBaseAmount = BigInt(liquidBaseAmount.toString());
@@ -26,6 +28,8 @@ export async function updateBalance(
 		balance.baseAmount = BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString());
 		balance.quoteAmount = BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString());
 		balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+		isSellOrderClosed && balance.sellClosed++;
+		isBuyOrderClosed && balance.buyClosed++;
 	} else {
 		balance = new Balance({
 			id: balanceId,
@@ -37,10 +41,54 @@ export async function updateBalance(
 			lockedQuoteAmount: BigInt(lockedQuoteAmount.toString()),
 			baseAmount: BigInt(liquidBaseAmount.toString()) + BigInt(lockedBaseAmount.toString()),
 			quoteAmount: BigInt(liquidQuoteAmount.toString()) + BigInt(lockedQuoteAmount.toString()),
+			sellClosed: isSellOrderClosed ? 1 : 0,
+			buyClosed: isBuyOrderClosed ? 1 : 0,
 			timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
 		});
 	}
 	await ctx.store.upsert(balance);
+}
+
+export async function updateOrder(ctx: any, trade: any, order: Order): Promise<boolean> {
+	const updatedAmount = BigInt(order.amount.toString()) - BigInt(trade.data.trade_size.toString());
+	const isOrderClosed = updatedAmount === 0n;
+	order.amount = isOrderClosed ? 0n : updatedAmount;
+	order.status = isOrderClosed ? OrderStatus.Closed : order.status;
+	order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+	await ctx.store.upsert(order);
+	return isOrderClosed;
+}
+
+export async function pnlCount(order: Order, balance: Balance, ctx: any, config: any): Promise<number> {
+	if (!(balance.sellClosed > 0 && balance.buyClosed > 0)) {
+		return 0;
+	}
+
+	const userClosedOrders: Order[] = await ctx.store.list(Order, [
+		{ field: 'user', op: '=', value: order.user },
+		{ field: 'market', op: '=', value: config.market },
+		{ field: 'status', op: '=', value: 'Closed' }
+	]);
+
+	const buyOrders = userClosedOrders.filter(order => order.orderType === 'Buy');
+	const sellOrders = userClosedOrders.filter(order => order.orderType === 'Sell');
+
+	// if (buyOrders.length === 0 || sellOrders.length === 0) {
+	// 	return 0;
+	// }
+
+	const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
+	const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+
+	const totalSellPrice = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
+	const totalSellAmount = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+
+	const averageBuyPrice = totalBuyPrice / totalBuyAmount;
+	const averageSellPrice = totalSellPrice / totalSellAmount;
+
+	const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount
+
+	return realizedPNL;
 }
 
 export async function getPricesLastWeek(config: any, ctx: any): Promise<number[]> {
@@ -66,30 +114,5 @@ export function calculatePercentile(values: number[], ctx: any, config: any): nu
 	return values[index];
 }
 
-export async function pnlCount(order: Order, ctx: any, config: any): Promise<number>  {
-	const userClosedOrders: Order[] = await ctx.store.list(Order, [
-		{ field: 'user', op: '=', value: order.user },
-		{ field: 'market', op: '=', value: config.market },
-		{ field: 'status', op: '=', value: 'Closed' }
-	]);
 
-	const buyOrders = userClosedOrders.filter(order => order.orderType === 'Buy');
-	const sellOrders = userClosedOrders.filter(order => order.orderType === 'Sell');
 
-	if (buyOrders.length === 0 || sellOrders.length === 0) {
-		return 0;
-	}
-	
-	const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
-	const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
-
-	const totalSellPrice = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
-	const totalSellAmount = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
-
-	const averageBuyPrice = totalBuyPrice / totalBuyAmount;
-	const averageSellPrice = totalSellPrice / totalSellAmount;
-
-	const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount
-
-	return realizedPNL;
-}

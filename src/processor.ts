@@ -5,7 +5,7 @@ import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
-import { calculatePercentile, getHash, getPricesLastWeek, pnlCount, updateBalance } from "./utils.js";
+import { calculatePercentile, getHash, getPricesLastWeek, pnlCount, updateBalance, updateOrder } from "./utils.js";
 import { GLOBAL_CONFIG } from "@sentio/runtime"
 
 GLOBAL_CONFIG.execution = {
@@ -115,62 +115,47 @@ Object.values(marketsConfig).forEach(config => {
         const seller_balanceId = getHash(`${trade.data.order_seller.Address?.bits}-${config.market}`);
         const buyer_balanceId = getHash(`${trade.data.order_buyer.Address?.bits}-${config.market}`);
         
-        const [seller_balance, buyer_balance, sell_order, buy_order] = await Promise.all([
-            ctx.store.get(Balance, seller_balanceId),
-            ctx.store.get(Balance, buyer_balanceId),
-            ctx.store.get(Order, trade.data.base_sell_order_id),
-            ctx.store.get(Order, trade.data.base_buy_order_id),
-        ]);
-            
-        if (sell_order) {
-            const updatedSellAmount = BigInt(sell_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
-            const isSellOrderClosed = updatedSellAmount === 0n;
-                
-            if (isSellOrderClosed) {
-                sell_order.amount = 0n
-                sell_order.status = OrderStatus.Closed
-                sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                sell_order.amount = updatedSellAmount;
-                sell_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            }
-            await ctx.store.upsert(sell_order);
+				if (seller !== buyer) {
+					const [seller_balance, buyer_balance, sell_order, buy_order] = await Promise.all([
+							ctx.store.get(Balance, seller_balanceId),
+							ctx.store.get(Balance, buyer_balanceId),
+							ctx.store.get(Order, trade.data.base_sell_order_id),
+							ctx.store.get(Order, trade.data.base_buy_order_id),
+					]);
+					
+					const [isSellOrderClosed, isBuyOrderClosed] = await Promise.all([
+						updateOrder(ctx, trade, sell_order),
+						updateOrder(ctx, trade, buy_order)
+					]);
+					
+					await Promise.all([
+						updateBalance(config, trade, ctx, seller_balance, seller_balanceId,
+							seller_liquidBaseAmount, seller_liquidQuoteAmount,
+							seller_lockedBaseAmount, seller_lockedQuoteAmount,
+							isSellOrderClosed, false, seller),
 
-            await pnlCount(sell_order, ctx, config)
-        } else {
-            console.log("no sell order for trade", trade.data.base_sell_order_id);
-            ctx.eventLogger.emit("no sell order for trade", {
-                market: ctx.contractAddress,
-                config: config.market,
-                orderId: trade.data.base_sell_order_id,
-            })
-        }
-            
-        if (buy_order) {
-            const updatedBuyAmount = BigInt(buy_order.amount.toString()) - BigInt(trade.data.trade_size.toString());
-            const isBuyOrderClosed = updatedBuyAmount === 0n;
-                
-            if (isBuyOrderClosed) {
-                buy_order.amount = 0n
-                buy_order.status = OrderStatus.Closed
-                buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            } else {
-                buy_order.amount = updatedBuyAmount;
-                buy_order.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
-            }
-            await ctx.store.upsert(buy_order);
-        } else {
-            console.log("no buy order for trade", trade.data.base_buy_order_id);
-            ctx.eventLogger.emit("no buy order for trade", {
-            market: ctx.contractAddress,
-            config: config.market,
-            orderId: trade.data.base_buy_order_id})
-        }
+						updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId,
+							buyer_liquidBaseAmount, buyer_liquidQuoteAmount,
+							buyer_lockedBaseAmount, buyer_lockedQuoteAmount,
+							false, isBuyOrderClosed, buyer)
+					]);
 
-        await Promise.all([
-            updateBalance(config, trade, ctx, seller_balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount, seller),
-            updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId, buyer_liquidBaseAmount, buyer_liquidQuoteAmount, buyer_lockedBaseAmount, buyer_lockedQuoteAmount, buyer)
-        ]);
+					await pnlCount(sell_order, seller_balance, ctx, config)
+					await pnlCount(buy_order, buyer_balance, ctx, config)
+				} else {
+					const [balance, sell_order, buy_order] = await Promise.all([
+						ctx.store.get(Balance, seller_balanceId),
+						ctx.store.get(Order, trade.data.base_sell_order_id),
+						ctx.store.get(Order, trade.data.base_buy_order_id),
+					]);
+
+					const [isSellOrderClosed, isBuyOrderClosed] = await Promise.all([
+						updateOrder(ctx, trade, sell_order),
+						updateOrder(ctx, trade, buy_order)
+					]);
+
+					await updateBalance(config, trade, ctx, balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount, isSellOrderClosed, isBuyOrderClosed, seller)
+				}
 
         const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
         const tradeEvent = new TradeEvent({
