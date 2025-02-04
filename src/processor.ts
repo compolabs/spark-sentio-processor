@@ -184,116 +184,116 @@ Object.values(marketsConfig).forEach(config => {
         const lockedQuoteAmount = BigInt(cancel.data.balance.locked.quote.toString());
         await updateBalance(config, cancel, ctx, balance, balanceId, liquidBaseAmount, liquidQuoteAmount, lockedBaseAmount, lockedQuoteAmount);
     })
-    .onTimeInterval(async (block, ctx) => {
-        const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
+    // .onTimeInterval(async (block, ctx) => {
+    //     const baseTokenPrice = await getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)) || config.defaultBasePrice;
 
-        const marketActiveOrders = await ctx.store.list(Order, [
-            { field: 'market', op: '=', value: config.market },
-            { field: 'status', op: '=', value: 'Active' }
-        ]);
+    //     const marketActiveOrders = await ctx.store.list(Order, [
+    //         { field: 'market', op: '=', value: config.market },
+    //         { field: 'status', op: '=', value: 'Active' }
+    //     ]);
 
-        const buyOrders = marketActiveOrders.filter(order => order.orderType === 'Buy');
-        const sellOrders = marketActiveOrders.filter(order => order.orderType === 'Sell');
+    //     const buyOrders = marketActiveOrders.filter(order => order.orderType === 'Buy');
+    //     const sellOrders = marketActiveOrders.filter(order => order.orderType === 'Sell');
 
-        const highestBid = Number(buyOrders.reduce((max, order) => order.price > max ? order.price : max, -Infinity)) / Math.pow(10, Number(config.priceDecimal));
-        const lowestAsk = Number(sellOrders.reduce((min, order) => order.price < min ? order.price : min, Infinity)) / Math.pow(10, Number(config.priceDecimal));
+    //     const highestBid = Number(buyOrders.reduce((max, order) => order.price > max ? order.price : max, -Infinity)) / Math.pow(10, Number(config.priceDecimal));
+    //     const lowestAsk = Number(sellOrders.reduce((min, order) => order.price < min ? order.price : min, Infinity)) / Math.pow(10, Number(config.priceDecimal));
 
-        const midpointPrice = (highestBid + lowestAsk)/2
-        console.log("midpointPrice", midpointPrice, highestBid, lowestAsk, config.market)
+    //     const midpointPrice = (highestBid + lowestAsk)/2
+    //     console.log("midpointPrice", midpointPrice, highestBid, lowestAsk, config.market)
 
-        const historicalBasePrices = await getPricesLastWeek(config, ctx);
-        console.log("historicalBasePrices", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, historicalBasePrices, ctx.contractAddress);
+    //     const historicalBasePrices = await getPricesLastWeek(config, ctx);
+    //     console.log("historicalBasePrices", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, historicalBasePrices, ctx.contractAddress);
 
-        const basePriceChanges = historicalBasePrices.map((price, index, arr) => {
-            if (index === 0) return 0;
-            return Math.abs((arr[index] - arr[index - 1]) / arr[index - 1])
-        });
-        console.log("Base price changes", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, basePriceChanges,  ctx.contractAddress);
+    //     const basePriceChanges = historicalBasePrices.map((price, index, arr) => {
+    //         if (index === 0) return 0;
+    //         return Math.abs((arr[index] - arr[index - 1]) / arr[index - 1])
+    //     });
+    //     console.log("Base price changes", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, basePriceChanges,  ctx.contractAddress);
 
-        const percentile = calculatePercentile(basePriceChanges, ctx, config);
+    //     const percentile = calculatePercentile(basePriceChanges, ctx, config);
 
-        const lowerLimit = midpointPrice * (1 - percentile);
-        const upperLimit = midpointPrice * (1 + percentile);
-        console.log("limits", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, baseTokenPrice, percentile, lowerLimit, upperLimit, ctx.contractAddress);
+    //     const lowerLimit = midpointPrice * (1 - percentile);
+    //     const upperLimit = midpointPrice * (1 + percentile);
+    //     console.log("limits", Math.floor(new Date(ctx.timestamp).getTime() / 1000), config.market, baseTokenPrice, percentile, lowerLimit, upperLimit, ctx.contractAddress);
 
-        const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
-            if (!map[order.user]) {
-                map[order.user] = [];
-            }
-            map[order.user].push(order);
-            return map;
-        }, {});
+    //     const userOrdersMap = marketActiveOrders.reduce((map: Record<string, Order[]>, order) => {
+    //         if (!map[order.user]) {
+    //             map[order.user] = [];
+    //         }
+    //         map[order.user].push(order);
+    //         return map;
+    //     }, {});
 
-        const snapshots = Object.entries(userOrdersMap).map(([user, userOrders]) => {
-            const userUsefulTVL = userOrders.reduce((total, userOrder) => {
-                const orderPrice = Number(userOrder.price) / Math.pow(10, Number(config.priceDecimal));
-                if (orderPrice >= lowerLimit && orderPrice <= upperLimit) {
-                    return total + (Number(userOrder.amount) / Math.pow(10, Number(config.baseDecimal))) * Number(baseTokenPrice);
-                }
-                return total;
-            }, 0);
+    //     const snapshots = Object.entries(userOrdersMap).map(([user, userOrders]) => {
+    //         const userUsefulTVL = userOrders.reduce((total, userOrder) => {
+    //             const orderPrice = Number(userOrder.price) / Math.pow(10, Number(config.priceDecimal));
+    //             if (orderPrice >= lowerLimit && orderPrice <= upperLimit) {
+    //                 return total + (Number(userOrder.amount) / Math.pow(10, Number(config.baseDecimal))) * Number(baseTokenPrice);
+    //             }
+    //             return total;
+    //         }, 0);
 
-            if (userUsefulTVL > 0) {
-                const snapshot = new UserScoreSnapshot({
-                    id: nanoid(),
-                    timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-                    block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
-                    chain_id: config.chainId,
-                    block_number: Number(block.height),
-                    user_address: user,
-                    pool_address: config.market,
-                    total_value_locked_score: userUsefulTVL,
-                    market_depth_score: undefined,
-                    marketPrice: baseTokenPrice,
-                    midpointPrice: midpointPrice,
-                    lowerLimit: lowerLimit,
-                    upperLimit: upperLimit,
-                    percentile: percentile,
-                });
+    //         if (userUsefulTVL > 0) {
+    //             const snapshot = new UserScoreSnapshot({
+    //                 id: nanoid(),
+    //                 timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+    //                 block_date: new Date(ctx.timestamp).toISOString().slice(0, 19).replace('T', ' '),
+    //                 chain_id: config.chainId,
+    //                 block_number: Number(block.height),
+    //                 user_address: user,
+    //                 pool_address: config.market,
+    //                 total_value_locked_score: userUsefulTVL,
+    //                 market_depth_score: undefined,
+    //                 marketPrice: baseTokenPrice,
+    //                 midpointPrice: midpointPrice,
+    //                 lowerLimit: lowerLimit,
+    //                 upperLimit: upperLimit,
+    //                 percentile: percentile,
+    //             });
                 
-                return ctx.store.upsert(snapshot).then(() => {
-                    console.log("snapshot", snapshot.pool_address, config.market);
-                });
-            } else {
-                console.log("no useful", ctx.contractAddress, config.market, user);
-                return Promise.resolve();
-            }
-        });
-        await Promise.all(snapshots);
+    //             return ctx.store.upsert(snapshot).then(() => {
+    //                 console.log("snapshot", snapshot.pool_address, config.market);
+    //             });
+    //         } else {
+    //             console.log("no useful", ctx.contractAddress, config.market, user);
+    //             return Promise.resolve();
+    //         }
+    //     });
+    //     await Promise.all(snapshots);
 
-        const baseToken = new Pools({
-            id: getHash(`${config.baseToken}-${config.market}`),
-            chain_id: config.chainId,
-            creation_block_number: config.creationBlockNumber,
-            timestamp: config.contractDeployed,
-            pool_address: config.market,
-            lp_token_address: config.market,
-            lp_token_symbol: `${config.baseTokenSymbol}/${config.quoteTokenSymbol}`,
-            token_address: config.baseToken,
-            token_symbol: config.baseTokenSymbol,
-            token_decimals: config.baseDecimal,
-            token_index: 1,
-            fee_rate: config.feeRate,
-            dex_type: config.dexType,
-        });
-        await ctx.store.upsert(baseToken);
-        const quoteToken = new Pools({
-            id: getHash(`${config.quoteToken}-${config.market}`),
-            chain_id: config.chainId,
-            creation_block_number: config.creationBlockNumber,
-            timestamp: config.contractDeployed,
-            pool_address: config.market,
-            lp_token_address: config.market,
-            lp_token_symbol: `${config.baseTokenSymbol}/${config.quoteTokenSymbol}`,
-            token_address: config.quoteToken,
-            token_symbol: config.quoteTokenSymbol,
-            token_decimals: config.quoteDecimal,
-            token_index: 0,
-            fee_rate: config.feeRate,
-            dex_type: config.dexType,
-        });
-        await ctx.store.upsert(quoteToken);
-    }, 60, 60)
+    //     const baseToken = new Pools({
+    //         id: getHash(`${config.baseToken}-${config.market}`),
+    //         chain_id: config.chainId,
+    //         creation_block_number: config.creationBlockNumber,
+    //         timestamp: config.contractDeployed,
+    //         pool_address: config.market,
+    //         lp_token_address: config.market,
+    //         lp_token_symbol: `${config.baseTokenSymbol}/${config.quoteTokenSymbol}`,
+    //         token_address: config.baseToken,
+    //         token_symbol: config.baseTokenSymbol,
+    //         token_decimals: config.baseDecimal,
+    //         token_index: 1,
+    //         fee_rate: config.feeRate,
+    //         dex_type: config.dexType,
+    //     });
+    //     await ctx.store.upsert(baseToken);
+    //     const quoteToken = new Pools({
+    //         id: getHash(`${config.quoteToken}-${config.market}`),
+    //         chain_id: config.chainId,
+    //         creation_block_number: config.creationBlockNumber,
+    //         timestamp: config.contractDeployed,
+    //         pool_address: config.market,
+    //         lp_token_address: config.market,
+    //         lp_token_symbol: `${config.baseTokenSymbol}/${config.quoteTokenSymbol}`,
+    //         token_address: config.quoteToken,
+    //         token_symbol: config.quoteTokenSymbol,
+    //         token_decimals: config.quoteDecimal,
+    //         token_index: 0,
+    //         fee_rate: config.feeRate,
+    //         dex_type: config.dexType,
+    //     });
+    //     await ctx.store.upsert(quoteToken);
+    // }, 60, 60)
     .onTimeInterval(async (block, ctx) => {
         const marketBalances = await ctx.store.list(Balance, [{ field: 'market', op: '=', value: config.market }]);
 

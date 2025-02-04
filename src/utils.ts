@@ -31,12 +31,27 @@ export async function updateBalance(
 		isSellOrderClosed && balance.sellClosed++;
 		isBuyOrderClosed && balance.buyClosed++;
 		if (user && balance.sellClosed > 0 && balance.buyClosed > 0) {
-			const { realizedPNL, realizedPercentPNL } = await pnlCount(user, ctx, config);
-			balance.pnl = realizedPNL;
-			balance.pnlInPersent = realizedPercentPNL;
-			balance.pnlChangedTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+			const {
+				realizedPNL_24h,
+				realizedPercentPNL_24h,
+				realizedPNL_7d,
+				realizedPercentPNL_7d,
+				realizedPNL_30d,
+				realizedPercentPNL_30d
+			} = await pnlCount(user, ctx, config);
+
+			balance.pnl1 = realizedPNL_24h;
+			balance.pnlInPersent1 = realizedPercentPNL_24h;
+
+			balance.pnl7 = realizedPNL_7d;
+			balance.pnlInPersent7 = realizedPercentPNL_7d;
+
+			balance.pnl30 = realizedPNL_30d;
+			balance.pnlInPersent31 = realizedPercentPNL_30d;
+
+			balance.pnlChangedTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
 		}
-		user && console.log("check pnl", user, isSellOrderClosed, isBuyOrderClosed, balance.pnl, balance.sellClosed, balance.buyClosed)
+		user && console.log("check pnl", user, isSellOrderClosed, isBuyOrderClosed, balance.pnl1, balance.sellClosed, balance.buyClosed)
 	} else {
 		balance = new Balance({
 			id: balanceId,
@@ -53,8 +68,12 @@ export async function updateBalance(
 			timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
 			initialTimestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
 			pnlChangedTimestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
-			pnl: 0,
-			pnlInPersent: 0,
+			pnl1: 0,
+			pnl7: 0,
+			pnl30: 0,
+			pnlInPersent1: 0,
+			pnlInPersent7: 0,
+			pnlInPersent31: 0,
 			tvl: 0,
 		});
 	}
@@ -71,29 +90,65 @@ export async function updateOrder(ctx: any, trade: any, order: Order): Promise<b
 	return isOrderClosed;
 }
 
-export async function pnlCount(user: string, ctx: any, config: any): Promise<{ realizedPNL: number, realizedPercentPNL: number }> {
+export async function pnlCount(user: string, ctx: any, config: any): Promise<{
+	realizedPNL_24h: number,
+	realizedPercentPNL_24h: number,
+	realizedPNL_7d: number,
+	realizedPercentPNL_7d: number,
+	realizedPNL_30d: number,
+	realizedPercentPNL_30d: number
+}> {
+	const now = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+
+	const oneDayAgo = now - 86400; 
+	const sevenDaysAgo = now - 86400 * 7;
+	const thirtyDaysAgo = now - 86400 * 30;
+
 	const userClosedOrders: Order[] = await ctx.store.list(Order, [
 		{ field: 'user', op: '=', value: user },
 		{ field: 'market', op: '=', value: config.market },
 		{ field: 'status', op: '=', value: 'Closed' }
 	]);
 
-	const buyOrders = userClosedOrders.filter(order => order.orderType === 'Buy');
-	const sellOrders = userClosedOrders.filter(order => order.orderType === 'Sell');
+	const orders_24h = userClosedOrders.filter(order => order.timestamp >= oneDayAgo);
+	const orders_7d = userClosedOrders.filter(order => order.timestamp >= sevenDaysAgo);
+	const orders_30d = userClosedOrders.filter(order => order.timestamp >= thirtyDaysAgo);
+	console.log("timestamp", now, oneDayAgo, sevenDaysAgo, thirtyDaysAgo)
+	const quotePrice = Number(getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp))) || config.defaultQuotePrice;
 
-	const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
-	const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+	function calculatePNL(orders: Order[]): { realizedPNL: number, realizedPercentPNL: number } {
+		if (orders.length === 0) {
+			return { realizedPNL: 0, realizedPercentPNL: 0 };
+		}
+		const buyOrders = orders.filter(order => order.orderType === 'Buy');
+		const sellOrders = orders.filter(order => order.orderType === 'Sell');
 
-	const totalSellPrice = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
-	const totalSellAmount = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+		const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
+		const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
 
-	const averageBuyPrice = totalBuyPrice / totalBuyAmount;
-	const averageSellPrice = totalSellPrice / totalSellAmount;
+		const totalSellPrice = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
+		const totalSellAmount = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
 
-	const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount
-	const realizedPercentPNL = (averageSellPrice - averageBuyPrice) / averageBuyPrice * 100
+		const averageBuyPrice = totalBuyPrice / totalBuyAmount;
+		const averageSellPrice = totalSellPrice / totalSellAmount;
+		const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount * quotePrice;
+		const realizedPercentPNL = ((averageSellPrice - averageBuyPrice) / averageBuyPrice) * 100;
 
-	return { realizedPNL, realizedPercentPNL };
+		return { realizedPNL, realizedPercentPNL };
+	}
+
+	const { realizedPNL: realizedPNL_24h, realizedPercentPNL: realizedPercentPNL_24h } = calculatePNL(orders_24h);
+	const { realizedPNL: realizedPNL_7d, realizedPercentPNL: realizedPercentPNL_7d } = calculatePNL(orders_7d);
+	const { realizedPNL: realizedPNL_30d, realizedPercentPNL: realizedPercentPNL_30d } = calculatePNL(orders_30d);
+
+	return {
+		realizedPNL_24h,
+		realizedPercentPNL_24h,
+		realizedPNL_7d,
+		realizedPercentPNL_7d,
+		realizedPNL_30d,
+		realizedPercentPNL_30d
+	};
 }
 
 export async function getPricesLastWeek(config: any, ctx: any): Promise<number[]> {

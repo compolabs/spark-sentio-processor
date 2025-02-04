@@ -13,8 +13,12 @@ type Balance @entity {
 
   sellClosed: Int!
   buyClosed: Int!
-  pnl: Float!
-  pnlInPersent: Float!
+  pnl1: Float!
+  pnlInPersent1: Float!  
+  pnl7: Float!
+  pnlInPersent7: Float!  
+  pnl31: Float!
+  pnlInPersent31: Float!
   timestamp: Int!
   initialTimestamp: Int!
   pnlChangedTimestamp: Int!
