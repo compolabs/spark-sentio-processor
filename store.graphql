@@ -9,11 +9,15 @@ type Balance @entity {
 
   baseAmount: BigInt!
   quoteAmount: BigInt!
+  tvl: Float!
 
   sellClosed: Int!
   buyClosed: Int!
-
+  pnl: Float!
+  pnlInPersent: Float!
   timestamp: Int!
+  initialTimestamp: Int!
+  pnlChangedTimestamp: Int!
 }
 
 type TotalVolume @entity {

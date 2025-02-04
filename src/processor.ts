@@ -5,7 +5,7 @@ import { marketsConfig } from './marketsConfig.js';
 import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
-import { calculatePercentile, getHash, getPricesLastWeek, pnlCount, updateBalance, updateOrder } from "./utils.js";
+import { calculatePercentile, getHash, getPricesLastWeek, updateBalance, updateOrder } from "./utils.js";
 import { GLOBAL_CONFIG } from "@sentio/runtime"
 
 GLOBAL_CONFIG.execution = {
@@ -115,47 +115,34 @@ Object.values(marketsConfig).forEach(config => {
         const seller_balanceId = getHash(`${trade.data.order_seller.Address?.bits}-${config.market}`);
         const buyer_balanceId = getHash(`${trade.data.order_buyer.Address?.bits}-${config.market}`);
         
-				if (seller !== buyer) {
-					const [seller_balance, buyer_balance, sell_order, buy_order] = await Promise.all([
-							ctx.store.get(Balance, seller_balanceId),
-							ctx.store.get(Balance, buyer_balanceId),
-							ctx.store.get(Order, trade.data.base_sell_order_id),
-							ctx.store.get(Order, trade.data.base_buy_order_id),
-					]);
-					
-					const [isSellOrderClosed, isBuyOrderClosed] = await Promise.all([
-						updateOrder(ctx, trade, sell_order),
-						updateOrder(ctx, trade, buy_order)
-					]);
-					
-					await Promise.all([
-						updateBalance(config, trade, ctx, seller_balance, seller_balanceId,
-							seller_liquidBaseAmount, seller_liquidQuoteAmount,
-							seller_lockedBaseAmount, seller_lockedQuoteAmount,
-							isSellOrderClosed, false, seller),
+        if (seller !== buyer) {
+            const [seller_balance, buyer_balance, sell_order, buy_order] = await Promise.all([
+            ctx.store.get(Balance, seller_balanceId),
+            ctx.store.get(Balance, buyer_balanceId),
+            ctx.store.get(Order, trade.data.base_sell_order_id),
+            ctx.store.get(Order, trade.data.base_buy_order_id)])
 
-						updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId,
-							buyer_liquidBaseAmount, buyer_liquidQuoteAmount,
-							buyer_lockedBaseAmount, buyer_lockedQuoteAmount,
-							false, isBuyOrderClosed, buyer)
-					]);
+            const [isSellOrderClosed, isBuyOrderClosed] = await Promise.all([updateOrder(ctx, trade, sell_order), updateOrder(ctx, trade, buy_order)])
 
-					await pnlCount(sell_order, seller_balance, ctx, config)
-					await pnlCount(buy_order, buyer_balance, ctx, config)
-				} else {
-					const [balance, sell_order, buy_order] = await Promise.all([
-						ctx.store.get(Balance, seller_balanceId),
-						ctx.store.get(Order, trade.data.base_sell_order_id),
-						ctx.store.get(Order, trade.data.base_buy_order_id),
-					]);
+            await Promise.all([
+                updateBalance(config, trade, ctx, seller_balance, seller_balanceId,
+                seller_liquidBaseAmount, seller_liquidQuoteAmount,
+                seller_lockedBaseAmount, seller_lockedQuoteAmount,
+                isSellOrderClosed, false, seller),
 
-					const [isSellOrderClosed, isBuyOrderClosed] = await Promise.all([
-						updateOrder(ctx, trade, sell_order),
-						updateOrder(ctx, trade, buy_order)
-					]);
+                updateBalance(config, trade, ctx, buyer_balance, buyer_balanceId,
+                buyer_liquidBaseAmount, buyer_liquidQuoteAmount,
+                buyer_lockedBaseAmount, buyer_lockedQuoteAmount,
+                false, isBuyOrderClosed, buyer)])
+        } else {
+            const [balance, sell_order, buy_order] = await Promise.all([
+            ctx.store.get(Balance, seller_balanceId),
+            ctx.store.get(Order, trade.data.base_sell_order_id),
+            ctx.store.get(Order, trade.data.base_buy_order_id)]);
 
-					await updateBalance(config, trade, ctx, balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount, isSellOrderClosed, isBuyOrderClosed, seller)
-				}
+            const [isSellOrderClosed, isBuyOrderClosed] = await Promise.all([updateOrder(ctx, trade, sell_order), updateOrder(ctx, trade, buy_order)]);
+            await updateBalance(config, trade, ctx, balance, seller_balanceId, seller_liquidBaseAmount, seller_liquidQuoteAmount, seller_lockedBaseAmount, seller_lockedQuoteAmount, isSellOrderClosed, isBuyOrderClosed, seller)
+        }
 
         const eventVolume = BigDecimal(trade.data.trade_price.toString()).div(BigDecimal(10).pow(config.priceDecimal)).multipliedBy(BigDecimal(trade.data.trade_size.toString()).div(BigDecimal(10).pow(config.baseDecimal)));
         const tradeEvent = new TradeEvent({
@@ -311,10 +298,6 @@ Object.values(marketsConfig).forEach(config => {
         const marketBalances = await ctx.store.list(Balance, [{ field: 'market', op: '=', value: config.market }]);
 
         let TVL = BigDecimal(0);
-        let amountBase = BigDecimal(0);
-        let amountQuote = BigDecimal(0);
-        let TVLInOrders = BigDecimal(0);
-            
         let quoteTVL = BigDecimal(0);
         let baseTVL = BigDecimal(0);
 
@@ -414,11 +397,13 @@ Object.values(marketsConfig).forEach(config => {
 
             const balanceBaseTVL = baseBalanceAmountBigDecimal.multipliedBy(baseTokenPrice);
             const balanceQuoteTVL = quoteBalanceAmountBigDecimal.multipliedBy(quoteTokenPrice);
-            const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
+			const balanceTVL = balanceBaseTVL.plus(balanceQuoteTVL).toNumber();
+			
+			balance.tvl = balanceTVL;
+			balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+			await ctx.store.upsert(balance);
 
             TVL = TVL.plus(balanceTVL);
-            amountBase = amountBase.plus(baseBalanceAmountBigDecimal);
-            amountQuote = amountQuote.plus(quoteBalanceAmountBigDecimal);
 
             quoteTVL = quoteTVL.plus(balanceQuoteTVL);
             baseTVL = baseTVL.plus(balanceBaseTVL);
@@ -431,10 +416,6 @@ Object.values(marketsConfig).forEach(config => {
             baseAmountOnOrders = baseAmountOnOrders.plus(lockedBaseAmount)
 
             ctx.meter.Gauge("total_tvl").record(TVL)
-            ctx.meter.Gauge("amount_base").record(amountBase)
-            ctx.meter.Gauge("amount_quote").record(amountQuote)
-
-            ctx.meter.Gauge("total_orders_tvl").record(TVLInOrders)
             ctx.meter.Gauge("total_quote_tvl").record(quoteTVL)
             ctx.meter.Gauge("total_base_tvl").record(baseTVL)
             ctx.meter.Gauge("total_locked_tvl").record(lockedTVL)

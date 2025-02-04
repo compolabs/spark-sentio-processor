@@ -30,6 +30,13 @@ export async function updateBalance(
 		balance.timestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
 		isSellOrderClosed && balance.sellClosed++;
 		isBuyOrderClosed && balance.buyClosed++;
+		if (user && balance.sellClosed > 0 && balance.buyClosed > 0) {
+			const { realizedPNL, realizedPercentPNL } = await pnlCount(user, ctx, config);
+			balance.pnl = realizedPNL;
+			balance.pnlInPersent = realizedPercentPNL;
+			balance.pnlChangedTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000)
+		}
+		user && console.log("check pnl", user, isSellOrderClosed, isBuyOrderClosed, balance.pnl, balance.sellClosed, balance.buyClosed)
 	} else {
 		balance = new Balance({
 			id: balanceId,
@@ -44,6 +51,11 @@ export async function updateBalance(
 			sellClosed: isSellOrderClosed ? 1 : 0,
 			buyClosed: isBuyOrderClosed ? 1 : 0,
 			timestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+			initialTimestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+			pnlChangedTimestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
+			pnl: 0,
+			pnlInPersent: 0,
+			tvl: 0,
 		});
 	}
 	await ctx.store.upsert(balance);
@@ -59,23 +71,15 @@ export async function updateOrder(ctx: any, trade: any, order: Order): Promise<b
 	return isOrderClosed;
 }
 
-export async function pnlCount(order: Order, balance: Balance, ctx: any, config: any): Promise<number> {
-	if (!(balance.sellClosed > 0 && balance.buyClosed > 0)) {
-		return 0;
-	}
-
+export async function pnlCount(user: string, ctx: any, config: any): Promise<{ realizedPNL: number, realizedPercentPNL: number }> {
 	const userClosedOrders: Order[] = await ctx.store.list(Order, [
-		{ field: 'user', op: '=', value: order.user },
+		{ field: 'user', op: '=', value: user },
 		{ field: 'market', op: '=', value: config.market },
 		{ field: 'status', op: '=', value: 'Closed' }
 	]);
 
 	const buyOrders = userClosedOrders.filter(order => order.orderType === 'Buy');
 	const sellOrders = userClosedOrders.filter(order => order.orderType === 'Sell');
-
-	// if (buyOrders.length === 0 || sellOrders.length === 0) {
-	// 	return 0;
-	// }
 
 	const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
 	const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
@@ -87,8 +91,9 @@ export async function pnlCount(order: Order, balance: Balance, ctx: any, config:
 	const averageSellPrice = totalSellPrice / totalSellAmount;
 
 	const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount
+	const realizedPercentPNL = (averageSellPrice - averageBuyPrice) / averageBuyPrice * 100
 
-	return realizedPNL;
+	return { realizedPNL, realizedPercentPNL };
 }
 
 export async function getPricesLastWeek(config: any, ctx: any): Promise<number[]> {

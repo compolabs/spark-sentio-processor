@@ -28,9 +28,14 @@ interface BalanceConstructorInput {
   lockedQuoteAmount: BigInt;
   baseAmount: BigInt;
   quoteAmount: BigInt;
+  tvl: Float;
   sellClosed: Int;
   buyClosed: Int;
+  pnl: Float;
+  pnlInPersent: Float;
   timestamp: Int;
+  initialTimestamp: Int;
+  pnlChangedTimestamp: Int;
 }
 @Entity("Balance")
 export class Balance extends AbstractEntity  {
@@ -72,6 +77,10 @@ export class Balance extends AbstractEntity  {
 	quoteAmount: BigInt
 
 	@Required
+	@Column("Float")
+	tvl: Float
+
+	@Required
 	@Column("Int")
 	sellClosed: Int
 
@@ -80,8 +89,24 @@ export class Balance extends AbstractEntity  {
 	buyClosed: Int
 
 	@Required
+	@Column("Float")
+	pnl: Float
+
+	@Required
+	@Column("Float")
+	pnlInPersent: Float
+
+	@Required
 	@Column("Int")
 	timestamp: Int
+
+	@Required
+	@Column("Int")
+	initialTimestamp: Int
+
+	@Required
+	@Column("Int")
+	pnlChangedTimestamp: Int
   constructor(data: BalanceConstructorInput) {super()}
   
 }
@@ -469,11 +494,15 @@ const source = `type Balance @entity {
 
   baseAmount: BigInt!
   quoteAmount: BigInt!
+  tvl: Float!
 
   sellClosed: Int!
   buyClosed: Int!
-
+  pnl: Float!
+  pnlInPersent: Float!
   timestamp: Int!
+  initialTimestamp: Int!
+  pnlChangedTimestamp: Int!
 }
 
 type TotalVolume @entity {
