@@ -2,7 +2,7 @@ import { SparkMarketProcessor } from "./types/fuel/SparkMarketProcessor.js";
 import { FuelNetwork } from "@sentio/sdk/fuel";
 import { BigDecimal, Counter } from "@sentio/sdk";
 import { marketsConfig } from './marketsConfig.js';
-import { Balance, DailyMarketVolume, DailyVolume, Order, OrderStatus, OrderType, Pools, TotalMarketVolume, TotalVolume, TradeEvent, UserScoreSnapshot } from './schema/store.js';
+import { Balance, Order, OrderStatus, OrderType, Pools, TradeEvent, UserScoreSnapshot } from './schema/store.js';
 import { getPriceBySymbol } from "@sentio/sdk/utils";
 import { nanoid } from "nanoid";
 import { calculatePercentile, getHash, getPricesLastWeek, updateBalance, updateOrder } from "./utils.js";
@@ -308,73 +308,73 @@ Object.values(marketsConfig).forEach(config => {
         let baseAmountOnBalances = BigDecimal(0);
         let baseAmountOnOrders = BigDecimal(0);
 
-        let dailyTradeVolume = BigDecimal(0);
-        let dailyMarketTradeVolume = BigDecimal(0);
+        // let dailyTradeVolume = BigDecimal(0);
+        // let dailyMarketTradeVolume = BigDecimal(0);
 
-        let totalTradeVolume = BigDecimal(0);
-        let totalMarketTradeVolume = BigDecimal(0);
+        // let totalTradeVolume = BigDecimal(0);
+        // let totalMarketTradeVolume = BigDecimal(0);
 
-        const currentTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
-        const oneDayAgoTimestamp = currentTimestamp - 86400;
+        // const currentTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
+        // const oneDayAgoTimestamp = currentTimestamp - 86400;
 
-        const protocolTrades = await ctx.store.list(TradeEvent, []);
-        const marketTrades = protocolTrades.filter(trade => trade.market === config.market);
+        // const protocolTrades = await ctx.store.list(TradeEvent, []);
+        // const marketTrades = protocolTrades.filter(trade => trade.market === config.market);
 
-        const dailyProtocolTrades = protocolTrades.filter(
-            (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
-        );
+        // const dailyProtocolTrades = protocolTrades.filter(
+        //     (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
+        // );
 
-        const dailyMarketTrades = marketTrades.filter(
-            (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
-        );
+        // const dailyMarketTrades = marketTrades.filter(
+        //     (trade) => trade.timestamp >= oneDayAgoTimestamp && trade.timestamp < currentTimestamp
+        // );
 
 
-        for (const trade of dailyProtocolTrades) {
-            dailyTradeVolume = dailyTradeVolume.plus(BigDecimal(trade.volume.toString()));
-        }
+        // for (const trade of dailyProtocolTrades) {
+        //     dailyTradeVolume = dailyTradeVolume.plus(BigDecimal(trade.volume.toString()));
+        // }
 
-        for (const trade of dailyMarketTrades) {
-            dailyMarketTradeVolume = dailyMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
-        }
+        // for (const trade of dailyMarketTrades) {
+        //     dailyMarketTradeVolume = dailyMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
+        // }
 
-        for (const trade of protocolTrades) {
-            totalTradeVolume = totalTradeVolume.plus(BigDecimal(trade.volume.toString()));
-        }
+        // for (const trade of protocolTrades) {
+        //     totalTradeVolume = totalTradeVolume.plus(BigDecimal(trade.volume.toString()));
+        // }
 
-        for (const trade of marketTrades) {
-            totalMarketTradeVolume = totalMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
-        }
+        // for (const trade of marketTrades) {
+        //     totalMarketTradeVolume = totalMarketTradeVolume.plus(BigDecimal(trade.volume.toString()));
+        // }
 
-        const dailyVolume = new DailyVolume({
-            id: ctx.block?.id as string,
-            timestamp: currentTimestamp,
-            volume: dailyTradeVolume.toNumber(),
-        });
+        // const dailyVolume = new DailyVolume({
+        //     id: ctx.block?.id as string,
+        //     timestamp: currentTimestamp,
+        //     volume: dailyTradeVolume.toNumber(),
+        // });
 
-        const dailyMarketVolume = new DailyMarketVolume({
-            id: ctx.block?.id as string,
-            market: config.market,
-            timestamp: currentTimestamp,
-            volume: dailyMarketTradeVolume.toNumber(),
-        });
+        // const dailyMarketVolume = new DailyMarketVolume({
+        //     id: ctx.block?.id as string,
+        //     market: config.market,
+        //     timestamp: currentTimestamp,
+        //     volume: dailyMarketTradeVolume.toNumber(),
+        // });
 
-        const totalVolume = new TotalVolume({
-            id: ctx.block?.id as string,
-            timestamp: currentTimestamp,
-            volume: totalTradeVolume.toNumber(),
-        });
+        // const totalVolume = new TotalVolume({
+        //     id: ctx.block?.id as string,
+        //     timestamp: currentTimestamp,
+        //     volume: totalTradeVolume.toNumber(),
+        // });
 
-        const totalMarketVolume = new TotalMarketVolume({
-            id: ctx.block?.id as string,
-            market: config.market,
-            timestamp: currentTimestamp,
-            volume: totalMarketTradeVolume.toNumber(),
-        });
+        // const totalMarketVolume = new TotalMarketVolume({
+        //     id: ctx.block?.id as string,
+        //     market: config.market,
+        //     timestamp: currentTimestamp,
+        //     volume: totalMarketTradeVolume.toNumber(),
+        // });
 
-        await ctx.store.upsert(totalVolume);
-        await ctx.store.upsert(totalMarketVolume);
-        await ctx.store.upsert(dailyVolume);
-        await ctx.store.upsert(dailyMarketVolume);
+        // await ctx.store.upsert(totalVolume);
+        // await ctx.store.upsert(totalMarketVolume);
+        // await ctx.store.upsert(dailyVolume);
+        // await ctx.store.upsert(dailyMarketVolume);
 
         const [baseTokenPrice = config.defaultBasePrice, quoteTokenPrice = config.defaultQuotePrice] = await Promise.all([
             getPriceBySymbol(config.baseTokenSymbol, new Date(ctx.timestamp)),
@@ -425,5 +425,5 @@ Object.values(marketsConfig).forEach(config => {
             ctx.meter.Gauge("base_amount_on_balances").record(baseAmountOnBalances)
             ctx.meter.Gauge("base_amount_on_orders").record(baseAmountOnOrders)
         }
-    }, 5, 5)
+    }, 1, 1)
 })

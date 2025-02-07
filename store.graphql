@@ -24,18 +24,18 @@ type Balance @entity {
   pnlChangedTimestamp: Int!
 }
 
-type TotalVolume @entity {
-  id: ID!
-  timestamp: Int!
-  volume: Float!
-}
+# type TotalVolume @entity {
+#   id: ID!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
-type TotalMarketVolume @entity {
-  id: ID!
-  market: String!
-  timestamp: Int!
-  volume: Float!
-}
+# type TotalMarketVolume @entity {
+#   id: ID!
+#   market: String!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
 type TradeEvent @entity {
   id: ID!
@@ -49,18 +49,18 @@ type TradeEvent @entity {
   date: String!
 }
 
-type DailyVolume @entity {
-  id: ID!
-  timestamp: Int!
-  volume: Float!
-}
+# type DailyVolume @entity {
+#   id: ID!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
-type DailyMarketVolume @entity {
-  id: ID!
-  market: String!
-  timestamp: Int!
-  volume: Float!
-}
+# type DailyMarketVolume @entity {
+#   id: ID!
+#   market: String!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
 type UserScoreSnapshot @entity {
   id: ID!

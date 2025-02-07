@@ -46,7 +46,7 @@ export async function updateBalance(
 			balance.pnl7 = realizedPNL_7d;
 			balance.pnlInPersent7 = realizedPercentPNL_7d;
 
-			balance.pnl30 = realizedPNL_30d;
+			balance.pnl31 = realizedPNL_30d;
 			balance.pnlInPersent31 = realizedPercentPNL_30d;
 
 			balance.pnlChangedTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
@@ -70,7 +70,7 @@ export async function updateBalance(
 			pnlChangedTimestamp: Math.floor(new Date(ctx.timestamp).getTime() / 1000),
 			pnl1: 0,
 			pnl7: 0,
-			pnl30: 0,
+			pnl31: 0,
 			pnlInPersent1: 0,
 			pnlInPersent7: 0,
 			pnlInPersent31: 0,

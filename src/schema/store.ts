@@ -35,7 +35,7 @@ interface BalanceConstructorInput {
   pnlInPersent1: Float;
   pnl7: Float;
   pnlInPersent7: Float;
-  pnl30: Float;
+  pnl31: Float;
   pnlInPersent31: Float;
   timestamp: Int;
   initialTimestamp: Int;
@@ -110,7 +110,7 @@ export class Balance extends AbstractEntity  {
 
 	@Required
 	@Column("Float")
-	pnl30: Float
+	pnl31: Float
 
 	@Required
 	@Column("Float")
@@ -128,59 +128,6 @@ export class Balance extends AbstractEntity  {
 	@Column("Int")
 	pnlChangedTimestamp: Int
   constructor(data: BalanceConstructorInput) {super()}
-  
-}
-
-
-interface TotalVolumeConstructorInput {
-  id: ID;
-  timestamp: Int;
-  volume: Float;
-}
-@Entity("TotalVolume")
-export class TotalVolume extends AbstractEntity  {
-
-	@Required
-	@Column("ID")
-	id: ID
-
-	@Required
-	@Column("Int")
-	timestamp: Int
-
-	@Required
-	@Column("Float")
-	volume: Float
-  constructor(data: TotalVolumeConstructorInput) {super()}
-  
-}
-
-
-interface TotalMarketVolumeConstructorInput {
-  id: ID;
-  market: String;
-  timestamp: Int;
-  volume: Float;
-}
-@Entity("TotalMarketVolume")
-export class TotalMarketVolume extends AbstractEntity  {
-
-	@Required
-	@Column("ID")
-	id: ID
-
-	@Required
-	@Column("String")
-	market: String
-
-	@Required
-	@Column("Int")
-	timestamp: Int
-
-	@Required
-	@Column("Float")
-	volume: Float
-  constructor(data: TotalMarketVolumeConstructorInput) {super()}
   
 }
 
@@ -235,59 +182,6 @@ export class TradeEvent extends AbstractEntity  {
 	@Column("String")
 	date: String
   constructor(data: TradeEventConstructorInput) {super()}
-  
-}
-
-
-interface DailyVolumeConstructorInput {
-  id: ID;
-  timestamp: Int;
-  volume: Float;
-}
-@Entity("DailyVolume")
-export class DailyVolume extends AbstractEntity  {
-
-	@Required
-	@Column("ID")
-	id: ID
-
-	@Required
-	@Column("Int")
-	timestamp: Int
-
-	@Required
-	@Column("Float")
-	volume: Float
-  constructor(data: DailyVolumeConstructorInput) {super()}
-  
-}
-
-
-interface DailyMarketVolumeConstructorInput {
-  id: ID;
-  market: String;
-  timestamp: Int;
-  volume: Float;
-}
-@Entity("DailyMarketVolume")
-export class DailyMarketVolume extends AbstractEntity  {
-
-	@Required
-	@Column("ID")
-	id: ID
-
-	@Required
-	@Column("String")
-	market: String
-
-	@Required
-	@Column("Int")
-	timestamp: Int
-
-	@Required
-	@Column("Float")
-	volume: Float
-  constructor(data: DailyMarketVolumeConstructorInput) {super()}
   
 }
 
@@ -522,25 +416,25 @@ const source = `type Balance @entity {
   pnlInPersent1: Float!  
   pnl7: Float!
   pnlInPersent7: Float!  
-  pnl30: Float!
+  pnl31: Float!
   pnlInPersent31: Float!
   timestamp: Int!
   initialTimestamp: Int!
   pnlChangedTimestamp: Int!
 }
 
-type TotalVolume @entity {
-  id: ID!
-  timestamp: Int!
-  volume: Float!
-}
+# type TotalVolume @entity {
+#   id: ID!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
-type TotalMarketVolume @entity {
-  id: ID!
-  market: String!
-  timestamp: Int!
-  volume: Float!
-}
+# type TotalMarketVolume @entity {
+#   id: ID!
+#   market: String!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
 type TradeEvent @entity {
   id: ID!
@@ -554,18 +448,18 @@ type TradeEvent @entity {
   date: String!
 }
 
-type DailyVolume @entity {
-  id: ID!
-  timestamp: Int!
-  volume: Float!
-}
+# type DailyVolume @entity {
+#   id: ID!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
-type DailyMarketVolume @entity {
-  id: ID!
-  market: String!
-  timestamp: Int!
-  volume: Float!
-}
+# type DailyMarketVolume @entity {
+#   id: ID!
+#   market: String!
+#   timestamp: Int!
+#   volume: Float!
+# }
 
 type UserScoreSnapshot @entity {
   id: ID!
@@ -629,11 +523,7 @@ DatabaseSchema.register({
   source,
   entities: {
     "Balance": Balance,
-		"TotalVolume": TotalVolume,
-		"TotalMarketVolume": TotalMarketVolume,
 		"TradeEvent": TradeEvent,
-		"DailyVolume": DailyVolume,
-		"DailyMarketVolume": DailyMarketVolume,
 		"UserScoreSnapshot": UserScoreSnapshot,
 		"Pools": Pools,
 		"Order": Order
