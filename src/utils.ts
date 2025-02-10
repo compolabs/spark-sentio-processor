@@ -123,6 +123,10 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 		const buyOrders = orders.filter(order => order.orderType === 'Buy');
 		const sellOrders = orders.filter(order => order.orderType === 'Sell');
 
+		if (buyOrders.length === 0 || sellOrders.length === 0) {
+			return { realizedPNL: 0, realizedPercentPNL: 0 };
+		}
+
 		const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
 		const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
 
@@ -134,12 +138,19 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 		const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount * quotePrice;
 		const realizedPercentPNL = ((averageSellPrice - averageBuyPrice) / averageBuyPrice) * 100;
 
+		console.log("calculatePNL", realizedPNL )
 		return { realizedPNL, realizedPercentPNL };
 	}
 
 	const { realizedPNL: realizedPNL_24h, realizedPercentPNL: realizedPercentPNL_24h } = calculatePNL(orders_24h);
 	const { realizedPNL: realizedPNL_7d, realizedPercentPNL: realizedPercentPNL_7d } = calculatePNL(orders_7d);
 	const { realizedPNL: realizedPNL_30d, realizedPercentPNL: realizedPercentPNL_30d } = calculatePNL(orders_30d);
+	console.log("pnlCount", realizedPNL_24h,
+		realizedPercentPNL_24h,
+		realizedPNL_7d,
+		realizedPercentPNL_7d,
+		realizedPNL_30d,
+		realizedPercentPNL_30d)
 
 	return {
 		realizedPNL_24h,
