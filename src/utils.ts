@@ -37,7 +37,8 @@ export async function updateBalance(
 				realizedPNL_7d,
 				realizedPercentPNL_7d,
 				realizedPNL_30d,
-				realizedPercentPNL_30d
+				realizedPercentPNL_30d,
+				realizedPNL_Comp1
 			} = await pnlCount(user, ctx, config);
 
 			balance.pnl1 = realizedPNL_24h;
@@ -48,7 +49,8 @@ export async function updateBalance(
 
 			balance.pnl31 = realizedPNL_30d;
 			balance.pnlInPersent31 = realizedPercentPNL_30d;
-
+			
+			balance.pnlComp1 = realizedPNL_Comp1;
 			balance.pnlChangedTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
 		}
 		user && console.log("check pnl", user, isSellOrderClosed, isBuyOrderClosed, balance.pnl1, balance.sellClosed, balance.buyClosed)
@@ -71,6 +73,7 @@ export async function updateBalance(
 			pnl1: 0,
 			pnl7: 0,
 			pnl31: 0,
+			pnlComp1: 0,
 			pnlInPersent1: 0,
 			pnlInPersent7: 0,
 			pnlInPersent31: 0,
@@ -96,13 +99,16 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 	realizedPNL_7d: number,
 	realizedPercentPNL_7d: number,
 	realizedPNL_30d: number,
-	realizedPercentPNL_30d: number
+	realizedPercentPNL_30d: number,
+	realizedPNL_Comp1: number
 }> {
 	const now = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
 
 	const oneDayAgo = now - 86400; 
 	const sevenDaysAgo = now - 86400 * 7;
 	const thirtyDaysAgo = now - 86400 * 30;
+	const comp1Start = 1739145600;
+	const comp1End = 1739750400;
 
 	const userClosedOrders: Order[] = await ctx.store.list(Order, [
 		{ field: 'user', op: '=', value: user },
@@ -113,6 +119,8 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 	const orders_24h = userClosedOrders.filter(order => order.timestamp >= oneDayAgo);
 	const orders_7d = userClosedOrders.filter(order => order.timestamp >= sevenDaysAgo);
 	const orders_30d = userClosedOrders.filter(order => order.timestamp >= thirtyDaysAgo);
+	const orders_Comp1 = userClosedOrders.filter(order => order.timestamp >= comp1Start && order.timestamp <= comp1End);
+
 	console.log("timestamp", now, oneDayAgo, sevenDaysAgo, thirtyDaysAgo)
 	const quotePrice = Number(getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp))) || config.defaultQuotePrice;
 
@@ -145,7 +153,9 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 	const { realizedPNL: realizedPNL_24h, realizedPercentPNL: realizedPercentPNL_24h } = calculatePNL(orders_24h);
 	const { realizedPNL: realizedPNL_7d, realizedPercentPNL: realizedPercentPNL_7d } = calculatePNL(orders_7d);
 	const { realizedPNL: realizedPNL_30d, realizedPercentPNL: realizedPercentPNL_30d } = calculatePNL(orders_30d);
-	console.log("pnlCount", realizedPNL_24h,
+	const { realizedPNL: realizedPNL_Comp1, realizedPercentPNL: _ } = calculatePNL(orders_Comp1);
+	console.log("pnlCount",
+		realizedPNL_24h,
 		realizedPercentPNL_24h,
 		realizedPNL_7d,
 		realizedPercentPNL_7d,
@@ -158,7 +168,8 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 		realizedPNL_7d,
 		realizedPercentPNL_7d,
 		realizedPNL_30d,
-		realizedPercentPNL_30d
+		realizedPercentPNL_30d,
+		realizedPNL_Comp1
 	};
 }
 
