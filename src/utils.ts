@@ -33,22 +33,22 @@ export async function updateBalance(
 		if (user && balance.sellClosed > 0 && balance.buyClosed > 0) {
 			const {
 				realizedPNL_24h,
-				realizedPercentPNL_24h,
+				// realizedPercentPNL_24h,
 				realizedPNL_7d,
-				realizedPercentPNL_7d,
+				// realizedPercentPNL_7d,
 				realizedPNL_30d,
-				realizedPercentPNL_30d,
+				// realizedPercentPNL_30d,
 				realizedPNL_Comp1
 			} = await pnlCount(user, ctx, config);
 
 			balance.pnl1 = realizedPNL_24h;
-			balance.pnlInPersent1 = realizedPercentPNL_24h;
+			// balance.pnlInPersent1 = realizedPercentPNL_24h;
 
 			balance.pnl7 = realizedPNL_7d;
-			balance.pnlInPersent7 = realizedPercentPNL_7d;
+			// balance.pnlInPersent7 = realizedPercentPNL_7d;
 
 			balance.pnl31 = realizedPNL_30d;
-			balance.pnlInPersent31 = realizedPercentPNL_30d;
+			// balance.pnlInPersent31 = realizedPercentPNL_30d;
 			
 			balance.pnlComp1 = realizedPNL_Comp1;
 			balance.pnlChangedTimestamp = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
@@ -74,9 +74,9 @@ export async function updateBalance(
 			pnl7: 0,
 			pnl31: 0,
 			pnlComp1: 0,
-			pnlInPersent1: 0,
-			pnlInPersent7: 0,
-			pnlInPersent31: 0,
+			// pnlInPersent1: 0,
+			// pnlInPersent7: 0,
+			// pnlInPersent31: 0,
 			tvl: 0,
 		});
 	}
@@ -95,11 +95,11 @@ export async function updateOrder(ctx: any, trade: any, order: Order): Promise<b
 
 export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 	realizedPNL_24h: number,
-	realizedPercentPNL_24h: number,
+	// realizedPercentPNL_24h: number,
 	realizedPNL_7d: number,
-	realizedPercentPNL_7d: number,
+	// realizedPercentPNL_7d: number,
 	realizedPNL_30d: number,
-	realizedPercentPNL_30d: number,
+	// realizedPercentPNL_30d: number,
 	realizedPNL_Comp1: number
 }> {
 	const now = Math.floor(new Date(ctx.timestamp).getTime() / 1000);
@@ -124,51 +124,52 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 	console.log("timestamp", now, oneDayAgo, sevenDaysAgo, thirtyDaysAgo)
 	const quotePrice = Number(getPriceBySymbol(config.quoteTokenSymbol, new Date(ctx.timestamp))) || config.defaultQuotePrice;
 
-	function calculatePNL(orders: Order[]): { realizedPNL: number, realizedPercentPNL: number } {
+	function calculatePNL(orders: Order[]): { realizedPNL: number } {
 		if (orders.length === 0) {
-			return { realizedPNL: 0, realizedPercentPNL: 0 };
+			return { realizedPNL: 0 };
 		}
 		const buyOrders = orders.filter(order => order.orderType === 'Buy');
 		const sellOrders = orders.filter(order => order.orderType === 'Sell');
 
 		if (buyOrders.length === 0 || sellOrders.length === 0) {
-			return { realizedPNL: 0, realizedPercentPNL: 0 };
+			return { realizedPNL: 0 };
 		}
 
-		const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
-		const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+		const totalBuyPrice = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) / Math.pow(10, config.priceDecimal) / Math.pow(10, config.baseDecimal), 0);
+		const totalBuyAmount = buyOrders.reduce((sum, order) => sum + Number(order.initialAmount) / Math.pow(10, config.baseDecimal), 0);
 
-		const totalSellPrice = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) * Math.pow(10, config.priceDecimal), 0);
-		const totalSellAmount = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount), 0);
+		const totalSellPrice = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) * Number(order.price) / Math.pow(10, config.priceDecimal) / Math.pow(10, config.baseDecimal), 0);
+		const totalSellAmount = sellOrders.reduce((sum, order) => sum + Number(order.initialAmount) / Math.pow(10, config.baseDecimal), 0);
 
 		const averageBuyPrice = totalBuyPrice / totalBuyAmount;
 		const averageSellPrice = totalSellPrice / totalSellAmount;
-		const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount * quotePrice;
-		const realizedPercentPNL = ((averageSellPrice - averageBuyPrice) / averageBuyPrice) * 100;
+		const realizedPNL = (averageSellPrice - averageBuyPrice) * totalSellAmount;
 
 		console.log("calculatePNL", realizedPNL )
-		return { realizedPNL, realizedPercentPNL };
+		console.log("average", averageBuyPrice, averageSellPrice, totalSellAmount )
+		return { realizedPNL };
 	}
 
-	const { realizedPNL: realizedPNL_24h, realizedPercentPNL: realizedPercentPNL_24h } = calculatePNL(orders_24h);
-	const { realizedPNL: realizedPNL_7d, realizedPercentPNL: realizedPercentPNL_7d } = calculatePNL(orders_7d);
-	const { realizedPNL: realizedPNL_30d, realizedPercentPNL: realizedPercentPNL_30d } = calculatePNL(orders_30d);
-	const { realizedPNL: realizedPNL_Comp1, realizedPercentPNL: _ } = calculatePNL(orders_Comp1);
+	const { realizedPNL: realizedPNL_24h } = calculatePNL(orders_24h);
+	const { realizedPNL: realizedPNL_7d } = calculatePNL(orders_7d);
+	const { realizedPNL: realizedPNL_30d } = calculatePNL(orders_30d);
+	const { realizedPNL: realizedPNL_Comp1} = calculatePNL(orders_Comp1);
 	console.log("pnlCount",
 		realizedPNL_24h,
-		realizedPercentPNL_24h,
+		// realizedPercentPNL_24h,
 		realizedPNL_7d,
-		realizedPercentPNL_7d,
+		// realizedPercentPNL_7d,
 		realizedPNL_30d,
-		realizedPercentPNL_30d)
+		// realizedPercentPNL_30d
+	)
 
 	return {
 		realizedPNL_24h,
-		realizedPercentPNL_24h,
+		// realizedPercentPNL_24h,
 		realizedPNL_7d,
-		realizedPercentPNL_7d,
+		// realizedPercentPNL_7d,
 		realizedPNL_30d,
-		realizedPercentPNL_30d,
+		// realizedPercentPNL_30d,
 		realizedPNL_Comp1
 	};
 }
