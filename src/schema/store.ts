@@ -32,9 +32,13 @@ interface BalanceConstructorInput {
   sellClosed: Int;
   buyClosed: Int;
   pnl1: Float;
+  pnlInPersent1: Float;
   pnl7: Float;
+  pnlInPersent7: Float;
   pnl31: Float;
+  pnlInPersent31: Float;
   pnlComp1: Float;
+  pnlInPersentComp1: Float;
   timestamp: Int;
   initialTimestamp: Int;
   pnlChangedTimestamp: Int;
@@ -96,7 +100,15 @@ export class Balance extends AbstractEntity  {
 
 	@Required
 	@Column("Float")
+	pnlInPersent1: Float
+
+	@Required
+	@Column("Float")
 	pnl7: Float
+
+	@Required
+	@Column("Float")
+	pnlInPersent7: Float
 
 	@Required
 	@Column("Float")
@@ -104,7 +116,15 @@ export class Balance extends AbstractEntity  {
 
 	@Required
 	@Column("Float")
+	pnlInPersent31: Float
+
+	@Required
+	@Column("Float")
 	pnlComp1: Float
+
+	@Required
+	@Column("Float")
+	pnlInPersentComp1: Float
 
 	@Required
 	@Column("Int")
@@ -403,15 +423,16 @@ const source = `type Balance @entity {
   sellClosed: Int!
   buyClosed: Int!
   pnl1: Float!
-  # pnlInPersent1: Float!  
+  pnlInPersent1: Float!  
 
   pnl7: Float!
-  # pnlInPersent7: Float!  
+  pnlInPersent7: Float!  
 
   pnl31: Float!
-  # pnlInPersent31: Float!  
+  pnlInPersent31: Float!  
   
   pnlComp1: Float!
+  pnlInPersentComp1: Float!
 
 
   timestamp: Int!
