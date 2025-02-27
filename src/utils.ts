@@ -112,8 +112,8 @@ export async function pnlCount(user: string, ctx: any, config: any): Promise<{
 	const oneDayAgo = now - 86400; 
 	const sevenDaysAgo = now - 86400 * 7;
 	const thirtyDaysAgo = now - 86400 * 30;
-	const comp1Start = 1739782800;
-	const comp1End = 1740387600;
+	const comp1Start = 1740992400;
+	const comp1End = 1741597200;
 
 	const userClosedOrders: Order[] = await ctx.store.list(Order, [
 		{ field: 'user', op: '=', value: user },
